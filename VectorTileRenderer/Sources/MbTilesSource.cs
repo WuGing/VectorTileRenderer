@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace VectorTileRenderer.Sources
 {
@@ -81,7 +79,7 @@ namespace VectorTileRenderer.Sources
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new MemberAccessException("Could not load Mbtiles source file");
             }
@@ -184,7 +182,7 @@ namespace VectorTileRenderer.Sources
 
                 return actualTile;
 
-            } catch(Exception e)
+            } catch(Exception)
             {
                 return null;
             }

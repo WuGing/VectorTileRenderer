@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Windows;
-using System.Windows.Media.Imaging;
+using SkiaSharp;
 
 namespace VectorTileRenderer
 {
@@ -27,6 +26,6 @@ namespace VectorTileRenderer
 
         void DrawUnknown(List<List<Point>> geometry, Brush style);
 
-        BitmapSource FinishDrawing();
+        SKBitmap FinishDrawing();
     }
 }

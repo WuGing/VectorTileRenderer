@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Media.Imaging;
+using SkiaSharp;
 
 namespace VectorTileRenderer
 {
     public class Renderer
     {
         // TODO make it instance based... maybe
-        private static Object cacheLock = new Object();
+        private static object cacheLock = new object();
 
         enum VisualLayerType
         {
@@ -34,7 +31,7 @@ namespace VectorTileRenderer
             public Brush Brush { get; set; } = null;
         }
 
-        public async static Task<BitmapSource> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+        public async static Task<SKBitmap> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
         {
             string layerString = whiteListLayers == null ? "" : string.Join(",-", whiteListLayers.ToArray());
 
@@ -73,57 +70,47 @@ namespace VectorTileRenderer
 
             // save to file in async fashion
             var _t = Task.Run(() =>
-              {
+            {
+                if (bitmap != null)
+                {
+                    try
+                    {
+                        lock (cacheLock)
+                        {
+                            if (File.Exists(path))
+                            {
+                                return;
+                            }
 
-                  if (bitmap != null)
-                  {
-                      try
-                      {
-                          lock (cacheLock)
-                          {
-                              if (File.Exists(path))
-                              {
-                                  return;
-                              }
-
-                              using (var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite))
-                              {
-                                  BitmapEncoder encoder = new PngBitmapEncoder();
-                                  encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                                  encoder.Save(fileStream);
-                              }
-                          }
-                      }
-                      catch (Exception e)
-                      {
-                          return;
-                      }
-                  }
-
-              });
-
-
-
+                            using (var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite))
+                            {
+                                  using (var image = SKImage.FromBitmap(bitmap))
+                                  using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+                                  {
+                                      data.SaveTo(fileStream);
+                                  }
+                            }
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        return;
+                    }
+                }
+            });
 
             return bitmap;
         }
 
-        static BitmapSource loadBitmap(string path)
+        static SKBitmap loadBitmap(string path)
         {
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                var fsBitmap = new BitmapImage();
-                fsBitmap.BeginInit();
-                fsBitmap.StreamSource = stream;
-                fsBitmap.CacheOption = BitmapCacheOption.OnLoad;
-                fsBitmap.EndInit();
-                fsBitmap.Freeze();
-
-                return fsBitmap;
+                return SKBitmap.Decode(stream);
             }
         }
 
-        public async static Task<BitmapSource> Render(Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+        public async static Task<SKBitmap> Render(Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
         {
             Dictionary<Source, Stream> rasterTileCache = new Dictionary<Source, Stream>();
             Dictionary<Source, VectorTile> vectorTileCache = new Dictionary<Source, VectorTile>();
@@ -302,7 +289,6 @@ namespace VectorTileRenderer
                             }
                         }
                     }
-
                 }
                 else if (layer.Type == "background")
                 {
@@ -357,7 +343,8 @@ namespace VectorTileRenderer
                         else if (feature.GeometryType == "Unknown")
                         {
                             canvas.DrawUnknown(geometry, brush);
-                        } else
+                        }
+                        else
                         {
 
                         }
@@ -433,8 +420,6 @@ namespace VectorTileRenderer
                 }).ToList();
             }).ToList();
         }
-
-
     }
 }
 

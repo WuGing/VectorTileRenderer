@@ -4,8 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Windows;
-using System.Windows.Media;
+using SkiaSharp;
 
 namespace VectorTileRenderer
 {
@@ -77,26 +76,6 @@ namespace VectorTileRenderer
         public bool Visibility { get; set; } = true; // visibility
     }
 
-    //class ComparableColor:IComparable
-    //{
-    //    private long numericColor;
-
-    //    public ComparableColor(string encodedColor)
-    //    {
-
-    //    }
-
-    //    public int CompareTo(object obj)
-    //    {
-    //        if(obj.GetType() != typeof(ComparableColor))
-    //        {
-    //            return -1;
-    //        }
-
-    //        return numericColor.CompareTo((ComparableColor)obj);
-    //    }
-    //}
-
     public class Layer
     {
         public int Index { get; set; } = -1;
@@ -135,7 +114,7 @@ namespace VectorTileRenderer
 
         public string FontDirectory { get; set; } = null;
 
-        public Style(string path, double scale = 1)
+        public Style(string path)
         {
             var json = System.IO.File.ReadAllText(path);
             dynamic jObject = JObject.Parse(json);
@@ -144,8 +123,6 @@ namespace VectorTileRenderer
             {
                 Metadata = jObject.metadata.ToObject<Dictionary<string, object>>();
             }
-
-            List<string> fontNames = new List<string>();
 
             foreach (JProperty jSource in jObject.sources)
             {
@@ -181,8 +158,10 @@ namespace VectorTileRenderer
             int i = 0;
             foreach (var jLayer in jObject.layers)
             {
-                var layer = new Layer();
-                layer.Index = i;
+                var layer = new Layer
+                {
+                    Index = i
+                };
 
                 IDictionary<string, JToken> layerDict = jLayer;
 
@@ -278,8 +257,6 @@ namespace VectorTileRenderer
             {
                 return token.ToObject<object>();
             }
-
-            return null;
         }
 
         public Brush[] GetStyleByType(string type, double zoom, double scale = 1)
@@ -314,7 +291,7 @@ namespace VectorTileRenderer
                 return newColor;
             }
 
-            return Colors.White;
+            return Color.White;
         }
 
         //public Brush[] GetBrushesCached(double zoom, double scale, string type, string id, Dictionary<string, object> attributes)
@@ -380,10 +357,12 @@ namespace VectorTileRenderer
             var layoutData = layer.Layout;
             var index = layer.Index;
 
-            var brush = new Brush();
-            brush.ZIndex = index;
-            brush._layer = layer;
-            brush.GlyphsDirectory = this.FontDirectory;
+            var brush = new Brush
+            {
+                ZIndex = index,
+                _layer = layer,
+                GlyphsDirectory = FontDirectory
+            };
 
             var paint = new Paint();
             brush.Paint = paint;
@@ -571,7 +550,7 @@ namespace VectorTileRenderer
 
                 if (layoutData.ContainsKey("text-optional"))
                 {
-                    paint.TextOptional = (bool)(getValue(layoutData["text-optional"], attributes));
+                    paint.TextOptional = (bool)getValue(layoutData["text-optional"], attributes);
                 }
 
                 if (layoutData.ContainsKey("text-transform"))
@@ -600,9 +579,6 @@ namespace VectorTileRenderer
                 {
                     paint.IconImage = (string)getValue(layoutData["icon-image"], attributes);
                 }
-
-                //Console.WriteLine("layout");
-                //Console.WriteLine(layoutData.ToString());
             }
 
             return brush;
@@ -646,7 +622,8 @@ namespace VectorTileRenderer
 
             if (colorString[0] == '#')
             {
-                return (Color)ColorConverter.ConvertFromString(colorString);
+                var parsedHex = SKColor.Parse(colorString);
+                return Color.FromArgb(parsedHex.Alpha, parsedHex.Red, parsedHex.Green, parsedHex.Blue);
             }
 
             if (colorString.StartsWith("hsl("))
@@ -656,12 +633,12 @@ namespace VectorTileRenderer
                 double s = double.Parse(segments[2]);
                 double l = double.Parse(segments[3]);
 
-                var color = (new ColorMine.ColorSpaces.Hsl()
+                var color = new ColorMine.ColorSpaces.Hsl()
                 {
                     H = h,
                     S = s,
                     L = l,
-                }).ToRgb();
+                }.ToRgb();
 
                 return Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
             }
@@ -707,13 +684,13 @@ namespace VectorTileRenderer
 
             try
             {
-                return (Color)ColorConverter.ConvertFromString(colorString);
+                var parsed = SKColor.Parse(colorString);
+                return Color.FromArgb(parsed.Alpha, parsed.Red, parsed.Green, parsed.Blue);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new NotImplementedException("Not implemented color format: " + colorString);
             }
-            //return Colors.Violet;
         }
 
         public bool ValidateLayer(Layer layer, double zoom, Dictionary<string, object> attributes)
@@ -748,7 +725,6 @@ namespace VectorTileRenderer
 
         private Layer[] findLayers(double zoom, string layerName, Dictionary<string, object> attributes)
         {
-            ////Console.WriteLine(layerName);
             List<Layer> result = new List<Layer>();
 
             foreach (var layer in Layers)
@@ -873,7 +849,6 @@ namespace VectorTileRenderer
                     if (!(attributes[key] is IComparable))
                     {
                         throw new NotImplementedException("Comparing colors probably");
-                        return false;
                     }
 
                     var valueA = (IComparable)attributes[key];

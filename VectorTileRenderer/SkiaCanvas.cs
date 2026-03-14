@@ -6,11 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace VectorTileRenderer
 {
@@ -19,7 +14,7 @@ namespace VectorTileRenderer
         int width;
         int height;
 
-        WriteableBitmap bitmap;
+        SKBitmap bitmap;
         SKSurface surface;
         SKCanvas canvas;
 
@@ -37,9 +32,8 @@ namespace VectorTileRenderer
             this.width = (int)width;
             this.height = (int)height;
 
-            bitmap = new WriteableBitmap(this.width, this.height, 96, 96, PixelFormats.Pbgra32, null);
-            bitmap.Lock();
             var info = new SKImageInfo(this.width, this.height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
+            bitmap = new SKBitmap(info);
 
             //var glInterface = GRGlInterface.CreateNativeGlInterface();
             //grContext = GRContext.Create(GRBackend.OpenGL, glInterface);
@@ -49,7 +43,7 @@ namespace VectorTileRenderer
             //renderTarget.Height = this.height;
 
 
-            surface = SKSurface.Create(info, bitmap.BackBuffer, bitmap.BackBufferStride);
+            surface = SKSurface.Create(info, bitmap.GetPixels(), bitmap.RowBytes);
             //surface = SKSurface.Create(grContext, renderTarget);
             canvas = surface.Canvas;
 
@@ -700,52 +694,23 @@ namespace VectorTileRenderer
         }
 
 
-        static SKImage toSKImage(BitmapSource bitmap)
-        {
-            // TODO: maybe keep the same color types where we can, instead of just going to the platform default
-            var info = new SKImageInfo(bitmap.PixelWidth, bitmap.PixelHeight);
-            var image = SKImage.Create(info);
-            using (var pixmap = image.PeekPixels())
-            {
-                toSKPixmap(bitmap, pixmap);
-            }
-            return image;
-        }
-
-        static void toSKPixmap(BitmapSource bitmap, SKPixmap pixmap)
-        {
-            // TODO: maybe keep the same color types where we can, instead of just going to the platform default
-            if (pixmap.ColorType == SKImageInfo.PlatformColorType)
-            {
-                var info = pixmap.Info;
-                var converted = new FormatConvertedBitmap(bitmap, PixelFormats.Pbgra32, null, 0);
-                converted.CopyPixels(new Int32Rect(0, 0, info.Width, info.Height), pixmap.GetPixels(), info.BytesSize, info.RowBytes);
-            }
-            else
-            {
-                // we have to copy the pixels into a format that we understand
-                // and then into a desired format
-                // TODO: we can still do a bit more for other cases where the color types are the same
-                using (var tempImage = toSKImage(bitmap))
-                {
-                    tempImage.ReadPixels(pixmap, 0, 0);
-                }
-            }
-        }
-
         public void DrawImage(Stream imageStream, Brush style)
         {
-            var bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.StreamSource = imageStream;
-            bitmapImage.DecodePixelWidth = this.width;
-            bitmapImage.DecodePixelHeight = this.height;
-            bitmapImage.EndInit();
+            if (imageStream == null)
+            {
+                return;
+            }
 
-            var image = toSKImage(bitmapImage);
+            imageStream.Position = 0;
+            using (var image = SKBitmap.Decode(imageStream))
+            {
+                if (image == null)
+                {
+                    return;
+                }
 
-            canvas.DrawImage(image, new SKPoint(0, 0));
+                canvas.DrawBitmap(image, new SKRect(0, 0, width, height));
+            }
         }
 
         public void DrawUnknown(List<List<Point>> geometry, Brush style)
@@ -753,7 +718,7 @@ namespace VectorTileRenderer
 
         }
 
-        public BitmapSource FinishDrawing()
+        public SKBitmap FinishDrawing()
         {
             //using (var paint = new SKPaint())
             //{
@@ -771,9 +736,7 @@ namespace VectorTileRenderer
             //grContext.
 
 
-            bitmap.AddDirtyRect(new Int32Rect(0, 0, this.width, this.height));
-            bitmap.Unlock();
-            bitmap.Freeze();
+            canvas.Flush();
 
             return bitmap;
 
