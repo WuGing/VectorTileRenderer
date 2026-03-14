@@ -1,8 +1,8 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using SkiaSharp;
 
@@ -117,104 +117,112 @@ namespace VectorTileRenderer
         public Style(string path)
         {
             var json = System.IO.File.ReadAllText(path);
-            dynamic jObject = JObject.Parse(json);
+            var jObject = JsonDocument.Parse(json).RootElement;
 
-            if (jObject["metadata"] != null)
+            if (jObject.TryGetProperty("metadata", out var metadataElement))
             {
-                Metadata = jObject.metadata.ToObject<Dictionary<string, object>>();
+                Metadata = plainifyJson(metadataElement) as Dictionary<string, object>;
             }
 
-            foreach (JProperty jSource in jObject.sources)
+            if (jObject.TryGetProperty("sources", out var sourcesElement))
             {
-                var source = new Source();
-
-                IDictionary<string, JToken> sourceDict = jSource.Value as JObject;
-
-                source.Name = jSource.Name;
-
-                if (sourceDict.ContainsKey("url"))
+                foreach (var jSource in sourcesElement.EnumerateObject())
                 {
-                    source.URL = plainifyJson(sourceDict["url"]) as string;
-                }
+                    var source = new Source();
 
-                if (sourceDict.ContainsKey("type"))
-                {
-                    source.Type = plainifyJson(sourceDict["type"]) as string;
-                }
+                    var sourceDict = plainifyJson(jSource.Value) as Dictionary<string, object>;
 
-                if (sourceDict.ContainsKey("minzoom"))
-                {
-                    source.MinZoom = Convert.ToDouble(plainifyJson(sourceDict["minzoom"]));
-                }
+                    source.Name = jSource.Name;
 
-                if (sourceDict.ContainsKey("maxzoom"))
-                {
-                    source.MaxZoom = Convert.ToDouble(plainifyJson(sourceDict["maxzoom"]));
-                }
+                    if (sourceDict.ContainsKey("url"))
+                    {
+                        source.URL = sourceDict["url"] as string;
+                    }
 
-                Sources[jSource.Name] = source;
+                    if (sourceDict.ContainsKey("type"))
+                    {
+                        source.Type = sourceDict["type"] as string;
+                    }
+
+                    if (sourceDict.ContainsKey("minzoom"))
+                    {
+                        source.MinZoom = Convert.ToDouble(sourceDict["minzoom"]);
+                    }
+
+                    if (sourceDict.ContainsKey("maxzoom"))
+                    {
+                        source.MaxZoom = Convert.ToDouble(sourceDict["maxzoom"]);
+                    }
+
+                    Sources[jSource.Name] = source;
+                }
             }
 
             int i = 0;
-            foreach (var jLayer in jObject.layers)
+            if (jObject.TryGetProperty("layers", out var layersElement))
             {
-                var layer = new Layer
+                foreach (var jLayer in layersElement.EnumerateArray())
                 {
-                    Index = i
-                };
+                    var layer = new Layer
+                    {
+                        Index = i
+                    };
 
-                IDictionary<string, JToken> layerDict = jLayer;
+                    var layerDict = plainifyJson(jLayer) as Dictionary<string, object>;
 
-                if (layerDict.ContainsKey("minzoom"))
-                {
-                    layer.MinZoom = Convert.ToDouble(plainifyJson(layerDict["minzoom"]));
+                    if (layerDict.ContainsKey("minzoom"))
+                    {
+                        layer.MinZoom = Convert.ToDouble(layerDict["minzoom"]);
+                    }
+
+                    if (layerDict.ContainsKey("maxzoom"))
+                    {
+                        layer.MaxZoom = Convert.ToDouble(layerDict["maxzoom"]);
+                    }
+
+                    if (layerDict.ContainsKey("id"))
+                    {
+                        layer.ID = layerDict["id"] as string;
+                    }
+
+                    if (layerDict.ContainsKey("type"))
+                    {
+                        layer.Type = layerDict["type"] as string;
+                    }
+
+                    if (layerDict.ContainsKey("source"))
+                    {
+                        layer.SourceName = layerDict["source"] as string;
+                        if (Sources.ContainsKey(layer.SourceName))
+                        {
+                            layer.Source = Sources[layer.SourceName];
+                        }
+                    }
+
+                    if (layerDict.ContainsKey("source-layer"))
+                    {
+                        layer.SourceLayer = layerDict["source-layer"] as string;
+                    }
+
+                    if (layerDict.ContainsKey("paint"))
+                    {
+                        layer.Paint = layerDict["paint"] as Dictionary<string, object>;
+                    }
+
+                    if (layerDict.ContainsKey("layout"))
+                    {
+                        layer.Layout = layerDict["layout"] as Dictionary<string, object>;
+                    }
+
+                    if (layerDict.ContainsKey("filter"))
+                    {
+                        layer.Filter = layerDict["filter"] as object[];
+                    }
+
+                    Layers.Add(layer);
+
+                    i++;
                 }
-
-                if (layerDict.ContainsKey("maxzoom"))
-                {
-                    layer.MaxZoom = Convert.ToDouble(plainifyJson(layerDict["maxzoom"]));
-                }
-
-                if (layerDict.ContainsKey("id"))
-                {
-                    layer.ID = plainifyJson(layerDict["id"]) as string;
-                }
-
-                if (layerDict.ContainsKey("type"))
-                {
-                    layer.Type = plainifyJson(layerDict["type"]) as string;
-                }
-
-                if (layerDict.ContainsKey("source"))
-                {
-                    layer.SourceName = plainifyJson(layerDict["source"]) as string;
-                    layer.Source = Sources[layer.SourceName];
-                }
-
-                if (layerDict.ContainsKey("source-layer"))
-                {
-                    layer.SourceLayer = plainifyJson(layerDict["source-layer"]) as string;
-                }
-
-                if (layerDict.ContainsKey("paint"))
-                {
-                    layer.Paint = plainifyJson(layerDict["paint"]) as Dictionary<string, object>;
-                }
-
-                if (layerDict.ContainsKey("layout"))
-                {
-                    layer.Layout = plainifyJson(layerDict["layout"]) as Dictionary<string, object>;
-                }
-
-                if (layerDict.ContainsKey("filter"))
-                {
-                    var filterArray = layerDict["filter"] as JArray;
-                    layer.Filter = plainifyJson(filterArray) as object[];
-                }
-
-                Layers.Add(layer);
-
-                i++;
             }
 
             Hash = Utils.Sha256(json);
@@ -240,23 +248,44 @@ namespace VectorTileRenderer
             Sources[name].Provider = provider;
         }
 
-        object plainifyJson(JToken token)
+        object plainifyJson(JsonElement token)
         {
-            if (token.Type == JTokenType.Object)
+            if (token.ValueKind == JsonValueKind.Object)
             {
-                IDictionary<string, JToken> dict = token as JObject;
-                return dict.Select(pair => new KeyValuePair<string, object>(pair.Key, plainifyJson(pair.Value)))
-                        .ToDictionary(key => key.Key, value => value.Value);
+                var dict = new Dictionary<string, object>();
+                foreach (var pair in token.EnumerateObject())
+                {
+                    dict[pair.Name] = plainifyJson(pair.Value);
+                }
+                return dict;
             }
-            else if (token.Type == JTokenType.Array)
+            else if (token.ValueKind == JsonValueKind.Array)
             {
-                var array = token as JArray;
-                return array.Select(item => plainifyJson(item)).ToArray();
+                return token.EnumerateArray().Select(item => plainifyJson(item)).ToArray();
             }
-            else
+
+            if (token.ValueKind == JsonValueKind.String)
             {
-                return token.ToObject<object>();
+                return token.GetString();
             }
+
+            if (token.ValueKind == JsonValueKind.Number)
+            {
+                long int64Value;
+                if (token.TryGetInt64(out int64Value))
+                {
+                    return int64Value;
+                }
+
+                return token.GetDouble();
+            }
+
+            if (token.ValueKind == JsonValueKind.True || token.ValueKind == JsonValueKind.False)
+            {
+                return token.GetBoolean();
+            }
+
+            return null;
         }
 
         public Brush[] GetStyleByType(string type, double zoom, double scale = 1)

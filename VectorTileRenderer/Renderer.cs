@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using SkiaSharp;
 
@@ -52,7 +53,7 @@ namespace VectorTileRenderer
                 }
             }
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(bundle);
+            var json = JsonSerializer.Serialize(bundle);
             var hash = Utils.Sha256(json).Substring(0, 12); // get 12 digits to avoid fs length issues
 
             var fileName = x + "x" + y + "-" + zoom + "-" + hash + ".png";

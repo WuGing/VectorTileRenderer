@@ -2,13 +2,7 @@
 using GMap.NET.MapProviders;
 using GMap.NET.Projections;
 using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using SkiaSharp;
 using VectorTileRenderer;
 
 namespace Gmap.Demo.WinForms
@@ -21,14 +15,16 @@ namespace Gmap.Demo.WinForms
 
         public VectorMbTilesProvider(string path, string stylePath, string cachePath)
         {
-            style = new Style(stylePath);
-            style.FontDirectory = @"styles/fonts/";
+            style = new Style(stylePath)
+            {
+                FontDirectory = @"styles/fonts/"
+            };
             this.cachePath = cachePath;
 
             provider = new VectorTileRenderer.Sources.MbTilesSource(path);
             style.SetSourceProvider(0, provider);
 
-            this.BypassCache = true;
+            BypassCache = true;
         }
 
         readonly Guid id = new Guid("36F6CE12-7191-1129-2C48-79DE8C9FB563");
@@ -75,48 +71,36 @@ namespace Gmap.Demo.WinForms
             var newY = (int)Math.Pow(2, zoom) - pos.Y - 1;
 
             var canvas = new SkiaCanvas();
-            System.Windows.Media.Imaging.BitmapSource bitmapSource;
+            SKBitmap bitmap;
 
             try
             {
-                bitmapSource = Renderer.RenderCached(cachePath, style, canvas, (int)pos.X, (int)newY, zoom, 256, 256, 1).Result;
-            } catch(Exception)
+                bitmap = Renderer.RenderCached(cachePath, style, canvas, (int)pos.X, (int)newY, zoom, 256, 256, 1).Result;
+            }
+            catch (Exception)
             {
-                bitmapSource = null;
+                bitmap = null;
             }
 
-            if(bitmapSource == null)
+            if (bitmap == null)
             {
-                bitmapSource = System.Windows.Media.Imaging.BitmapImage.Create(
-                    2,
-                    2,
-                    96,
-                    96,
-                    System.Windows.Media.PixelFormats.Indexed1,
-                    new System.Windows.Media.Imaging.BitmapPalette(new List<System.Windows.Media.Color> { System.Windows.Media.Colors.Transparent }),
-                    new byte[] { 0, 0, 0, 0 },
-                    1);
+                bitmap = new SKBitmap(2, 2, SKColorType.Bgra8888, SKAlphaType.Premul);
+                using (var canvas2 = new SKCanvas(bitmap))
+                {
+                    canvas2.Clear(SKColors.Transparent);
+                }
             }
 
-            return GetTileImageFromArray(GetBytesFromBitmapSource(bitmapSource));
+            return GetTileImageFromArray(GetBytesFromBitmap(bitmap));
         }
-        
-        static byte[] GetBytesFromBitmapSource(System.Windows.Media.Imaging.BitmapSource bmp)
+
+        static byte[] GetBytesFromBitmap(SKBitmap bmp)
         {
-            System.Windows.Media.Imaging.PngBitmapEncoder encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
-            //encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
-            // byte[] bit = new byte[0];
-            using (MemoryStream stream = new MemoryStream())
+            using (var image = SKImage.FromBitmap(bmp))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
             {
-                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
-                encoder.Save(stream);
-                byte[] bit = stream.ToArray();
-                stream.Close();
-
-                return bit;
+                return data.ToArray();
             }
         }
-
-
     }
 }

@@ -14,12 +14,12 @@
     <PackageReference Include="Clipper" Version="6.4.0" />
     <PackageReference Include="ColorMine" Version="1.2.0" />
     <PackageReference Include="Mapbox.VectorTile" Version="1.0.4-alpha2" />
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="SkiaSharp" Version="1.60.0" />
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.115.0" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Text.Json" Version="10.0.5" />
   </ItemGroup>
 </Project>
