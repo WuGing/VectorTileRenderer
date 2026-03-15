@@ -116,6 +116,8 @@ namespace VectorTileRenderer
             Dictionary<Source, Stream> rasterTileCache = new Dictionary<Source, Stream>();
             Dictionary<Source, VectorTile> vectorTileCache = new Dictionary<Source, VectorTile>();
             Dictionary<string, List<VectorTileLayer>> categorizedVectorLayers = new Dictionary<string, List<VectorTileLayer>>();
+            Dictionary<VectorTileFeature, List<List<Point>>> localizedGeometryCache = new Dictionary<VectorTileFeature, List<List<Point>>>();
+            HashSet<string> whiteListLayerSet = whiteListLayers == null ? null : new HashSet<string>(whiteListLayers);
 
             double actualZoom = zoom;
 
@@ -137,9 +139,9 @@ namespace VectorTileRenderer
             // TODO refactor this messy block
             foreach (var layer in style.Layers)
             {
-                if (whiteListLayers != null && layer.Type != "background" && layer.SourceLayer != "")
+                if (whiteListLayerSet != null && layer.Type != "background" && layer.SourceLayer != "")
                 {
-                    if (!whiteListLayers.Contains(layer.SourceLayer))
+                    if (!whiteListLayerSet.Contains(layer.SourceLayer))
                     {
                         continue;
                     }
@@ -148,7 +150,7 @@ namespace VectorTileRenderer
                 {
                     if (layer.Source.Type == "vector")
                     {
-                        if (!vectorTileCache.ContainsKey(layer.Source))
+                        if (!vectorTileCache.TryGetValue(layer.Source, out var vectorTile))
                         {
                             if (layer.Source.Provider is Sources.IVectorTileSource)
                             {
@@ -170,22 +172,7 @@ namespace VectorTileRenderer
                                 //canvas.ClipOverflow = true;
 
                                 vectorTileCache[layer.Source] = tile;
-
-                                // normalize the points from 0 to size
-                                foreach (var vectorLayer in tile.Layers)
-                                {
-                                    foreach (var feature in vectorLayer.Features)
-                                    {
-                                        foreach (var geometry in feature.Geometry)
-                                        {
-                                            for (int i = 0; i < geometry.Count; i++)
-                                            {
-                                                var point = geometry[i];
-                                                geometry[i] = new Point(point.X / feature.Extent * sizeX, point.Y / feature.Extent * sizeY);
-                                            }
-                                        }
-                                    }
-                                }
+                                vectorTile = tile;
 
                                 foreach (var tileLayer in tile.Layers)
                                 {
@@ -200,13 +187,13 @@ namespace VectorTileRenderer
                     }
                     else if (layer.Source.Type == "raster")
                     {
-                        if (!rasterTileCache.ContainsKey(layer.Source))
+                        if (!rasterTileCache.TryGetValue(layer.Source, out var rasterTile))
                         {
                             if (layer.Source.Provider != null)
                             {
                                 if (layer.Source.Provider is Sources.ITileSource)
                                 {
-                                    var tile = await (layer.Source.Provider as Sources.ITileSource).GetTile(x, y, (int)zoom);
+                                    var tile = await layer.Source.Provider.GetTile(x, y, (int)zoom);
 
                                     if (tile == null)
                                     {
@@ -216,11 +203,12 @@ namespace VectorTileRenderer
                                     }
 
                                     rasterTileCache[layer.Source] = tile;
+                                    rasterTile = tile;
                                 }
                             }
                         }
 
-                        if (rasterTileCache.ContainsKey(layer.Source))
+                        if (rasterTile != null)
                         {
                             if (style.ValidateLayer(layer, (int)zoom, null))
                             {
@@ -234,23 +222,25 @@ namespace VectorTileRenderer
                                 visualLayers.Add(new VisualLayer()
                                 {
                                     Type = VisualLayerType.Raster,
-                                    RasterStream = rasterTileCache[layer.Source],
+                                    RasterStream = rasterTile,
                                     Brush = brush,
                                 });
                             }
                         }
                     }
 
-                    if (categorizedVectorLayers.ContainsKey(layer.SourceLayer))
+                    if (categorizedVectorLayers.TryGetValue(layer.SourceLayer, out var tileLayers))
                     {
-                        var tileLayers = categorizedVectorLayers[layer.SourceLayer];
-
                         foreach (var tileLayer in tileLayers)
                         {
                             foreach (var feature in tileLayer.Features)
                             {
                                 //var geometry = localizeGeometry(feature.Geometry, sizeX, sizeY, feature.Extent);
-                                var attributes = new Dictionary<string, object>(feature.Attributes);
+                                var attributes = new Dictionary<string, object>(feature.Attributes.Count + 3);
+                                foreach (var pair in feature.Attributes)
+                                {
+                                    attributes[pair.Key] = pair.Value;
+                                }
 
                                 attributes["$type"] = feature.GeometryType;
                                 attributes["$id"] = layer.ID;
@@ -279,11 +269,17 @@ namespace VectorTileRenderer
                                         continue;
                                     }
 
+                                    if (!localizedGeometryCache.TryGetValue(feature, out var localizedGeometry))
+                                    {
+                                        localizedGeometry = localizeGeometry(feature.Geometry, sizeX, sizeY, feature.Extent);
+                                        localizedGeometryCache[feature] = localizedGeometry;
+                                    }
+
                                     visualLayers.Add(new VisualLayer()
                                     {
                                         Type = VisualLayerType.Vector,
                                         VectorTileFeature = feature,
-                                        Geometry = feature.Geometry,
+                                        Geometry = localizedGeometry,
                                         Brush = brush,
                                     });
                                 }
@@ -301,16 +297,16 @@ namespace VectorTileRenderer
                 }
             }
 
+            var orderedVisualLayers = visualLayers.OrderBy(item => item.Brush.ZIndex).ToList();
+
             // defered rendering to preserve text drawing order
-            foreach (var layer in visualLayers.OrderBy(item => item.Brush.ZIndex))
+            foreach (var layer in orderedVisualLayers)
             {
                 if (layer.Type == VisualLayerType.Vector)
                 {
                     var feature = layer.VectorTileFeature;
                     var geometry = layer.Geometry;
                     var brush = layer.Brush;
-
-                    var attributesDict = feature.Attributes.ToDictionary(key => key.Key, value => value.Value);
 
                     if (!brush.Paint.Visibility)
                     {
@@ -323,7 +319,10 @@ namespace VectorTileRenderer
                         {
                             foreach (var point in geometry)
                             {
-                                canvas.DrawPoint(point.First(), brush);
+                                if (point.Count > 0)
+                                {
+                                    canvas.DrawPoint(point[0], brush);
+                                }
                             }
                         }
                         else if (feature.GeometryType == "LineString")
@@ -362,15 +361,14 @@ namespace VectorTileRenderer
                 }
             }
 
-            foreach (var layer in visualLayers.OrderBy(item => item.Brush.ZIndex).Reverse())
+            for (int i = orderedVisualLayers.Count - 1; i >= 0; i--)
             {
+                var layer = orderedVisualLayers[i];
                 if (layer.Type == VisualLayerType.Vector)
                 {
                     var feature = layer.VectorTileFeature;
                     var geometry = layer.Geometry;
                     var brush = layer.Brush;
-
-                    var attributesDict = feature.Attributes.ToDictionary(key => key.Key, value => value.Value);
 
                     if (!brush.Paint.Visibility)
                     {
@@ -381,9 +379,9 @@ namespace VectorTileRenderer
                     {
                         foreach (var point in geometry)
                         {
-                            if (brush.Text != null)
+                            if (brush.Text != null && point.Count > 0)
                             {
-                                canvas.DrawText(point.First(), brush);
+                                canvas.DrawText(point[0], brush);
                             }
                         }
                     }
@@ -405,21 +403,24 @@ namespace VectorTileRenderer
 
         private static List<List<Point>> localizeGeometry(List<List<Point>> coordinates, double sizeX, double sizeY, double extent)
         {
-            return coordinates.Select(list =>
-            {
-                return list.Select(point =>
-                {
-                    Point newPoint = new Point(0, 0);
+            var localized = new List<List<Point>>(coordinates.Count);
 
+            foreach (var list in coordinates)
+            {
+                var localizedList = new List<Point>(list.Count);
+
+                foreach (var point in list)
+                {
                     var x = Utils.ConvertRange(point.X, 0, extent, 0, sizeX, false);
                     var y = Utils.ConvertRange(point.Y, 0, extent, 0, sizeY, false);
 
-                    newPoint.X = x;
-                    newPoint.Y = y;
+                    localizedList.Add(new Point(x, y));
+                }
 
-                    return newPoint;
-                }).ToList();
-            }).ToList();
+                localized.Add(localizedList);
+            }
+
+            return localized;
         }
     }
 }

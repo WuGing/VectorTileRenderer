@@ -11,10 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Clipper" Version="6.4.0" />
-    <PackageReference Include="ColorMine" Version="1.2.0" />
-    <PackageReference Include="Mapbox.VectorTile" Version="1.0.4-alpha2" />
-    <PackageReference Include="SkiaSharp" Version="1.60.0" />
+    <PackageReference Include="Clipper2" Version="2.0.0" />
+    <PackageReference Include="mapbox-vector-tile" Version="5.3.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.2" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
   </ItemGroup>
 

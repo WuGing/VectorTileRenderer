@@ -49,7 +49,7 @@ namespace VectorTileRenderer
         public double LineWidth { get; set; } = 1;
         public double LineOffset { get; set; } = 0;
         public double LineBlur { get; set; } = 0;
-        public double[] LineDashArray { get; set; } = new double[0];
+        public double[] LineDashArray { get; set; } = [];
         public double LineOpacity { get; set; } = 1;
 
         public SymbolPlacement SymbolPlacement { get; set; } = SymbolPlacement.Point;
@@ -60,7 +60,7 @@ namespace VectorTileRenderer
         public double IconOpacity { get; set; } = 1;
 
         public Color TextColor { get; set; }
-        public string[] TextFont { get; set; } = new string[] { "Open Sans Regular", "Arial Unicode MS Regular" };
+        public string[] TextFont { get; set; } = ["Open Sans Regular", "Arial Unicode MS Regular"];
         public double TextSize { get; set; } = 16;
         public double TextMaxWidth { get; set; } = 10;
         public TextAlignment TextJustify { get; set; } = TextAlignment.Center;
@@ -117,7 +117,11 @@ namespace VectorTileRenderer
         public Style(string path)
         {
             var json = System.IO.File.ReadAllText(path);
-            var jObject = JsonDocument.Parse(json).RootElement;
+            var jObject = JsonDocument.Parse(json, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip
+            }).RootElement;
 
             if (jObject.TryGetProperty("metadata", out var metadataElement))
             {
@@ -483,7 +487,7 @@ namespace VectorTileRenderer
 
                 if (paintData.ContainsKey("line-dasharray"))
                 {
-                    var array = (getValue(paintData["line-dasharray"], attributes) as object[]);
+                    var array = getValue(paintData["line-dasharray"], attributes) as object[];
                     paint.LineDashArray = array.Select(item => Convert.ToDouble(item) * scale).ToArray();
                 }
 
@@ -662,14 +666,7 @@ namespace VectorTileRenderer
                 double s = double.Parse(segments[2]);
                 double l = double.Parse(segments[3]);
 
-                var color = new ColorMine.ColorSpaces.Hsl()
-                {
-                    H = h,
-                    S = s,
-                    L = l,
-                }.ToRgb();
-
-                return Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
+                return hslToColor(h, s, l);
             }
 
             if (colorString.StartsWith("hsla("))
@@ -680,14 +677,8 @@ namespace VectorTileRenderer
                 double l = double.Parse(segments[3]);
                 double a = double.Parse(segments[4]) * 255;
 
-                var color = (new ColorMine.ColorSpaces.Hsl()
-                {
-                    H = h,
-                    S = s,
-                    L = l,
-                }).ToRgb();
-
-                return Color.FromArgb((byte)(a), (byte)color.R, (byte)color.G, (byte)color.B);
+                var color = hslToColor(h, s, l);
+                return Color.FromArgb((byte)a, color.R, color.G, color.B);
             }
 
             if (colorString.StartsWith("rgba("))
@@ -722,6 +713,63 @@ namespace VectorTileRenderer
             }
         }
 
+        private static Color hslToColor(double h, double sPercent, double lPercent)
+        {
+            // CSS-style hsl() inputs use percentages for saturation and lightness.
+            var s = Math.Max(0, Math.Min(100, sPercent)) / 100.0;
+            var l = Math.Max(0, Math.Min(100, lPercent)) / 100.0;
+            var normalizedHue = h % 360.0;
+            if (normalizedHue < 0)
+            {
+                normalizedHue += 360.0;
+            }
+
+            var c = (1.0 - Math.Abs(2.0 * l - 1.0)) * s;
+            var x = c * (1.0 - Math.Abs(normalizedHue / 60.0 % 2.0 - 1.0));
+            var m = l - c / 2.0;
+
+            double rPrime = 0;
+            double gPrime = 0;
+            double bPrime = 0;
+
+            if (normalizedHue < 60)
+            {
+                rPrime = c;
+                gPrime = x;
+            }
+            else if (normalizedHue < 120)
+            {
+                rPrime = x;
+                gPrime = c;
+            }
+            else if (normalizedHue < 180)
+            {
+                gPrime = c;
+                bPrime = x;
+            }
+            else if (normalizedHue < 240)
+            {
+                gPrime = x;
+                bPrime = c;
+            }
+            else if (normalizedHue < 300)
+            {
+                rPrime = x;
+                bPrime = c;
+            }
+            else
+            {
+                rPrime = c;
+                bPrime = x;
+            }
+
+            byte r = (byte)Math.Round((rPrime + m) * 255.0);
+            byte g = (byte)Math.Round((gPrime + m) * 255.0);
+            byte b = (byte)Math.Round((bPrime + m) * 255.0);
+
+            return Color.FromRgb(r, g, b);
+        }
+
         public bool ValidateLayer(Layer layer, double zoom, Dictionary<string, object> attributes)
         {
             if (layer.MinZoom != null)
@@ -740,7 +788,7 @@ namespace VectorTileRenderer
                 }
             }
 
-            if (attributes != null && layer.Filter.Count() > 0)
+            if (attributes != null && layer.Filter.Length > 0)
             {
                 // TODO make this more performant
                 if (!validateUsingFilter(layer.Filter, attributes))
@@ -807,16 +855,22 @@ namespace VectorTileRenderer
 
         private bool validateUsingFilter(object[] filterArray, Dictionary<string, object> attributes)
         {
-            if (filterArray.Count() == 0)
+            if (filterArray.Length == 0)
             {
+                return true;
             }
             var operation = filterArray[0] as string;
             bool result;
 
             if (operation == "all")
             {
-                foreach (object[] subFilter in filterArray.Skip(1))
+                for (int i = 1; i < filterArray.Length; i++)
                 {
+                    var subFilter = filterArray[i] as object[];
+                    if (subFilter == null)
+                    {
+                        continue;
+                    }
                     if (!validateUsingFilter(subFilter, attributes))
                     {
                         return false;
@@ -826,8 +880,13 @@ namespace VectorTileRenderer
             }
             else if (operation == "any")
             {
-                foreach (object[] subFilter in filterArray.Skip(1))
+                for (int i = 1; i < filterArray.Length; i++)
                 {
+                    var subFilter = filterArray[i] as object[];
+                    if (subFilter == null)
+                    {
+                        continue;
+                    }
                     if (validateUsingFilter(subFilter, attributes))
                     {
                         return true;
@@ -838,8 +897,13 @@ namespace VectorTileRenderer
             else if (operation == "none")
             {
                 result = false;
-                foreach (object[] subFilter in filterArray.Skip(1))
+                for (int i = 1; i < filterArray.Length; i++)
                 {
+                    var subFilter = filterArray[i] as object[];
+                    if (subFilter == null)
+                    {
+                        continue;
+                    }
                     if (validateUsingFilter(subFilter, attributes))
                     {
                         result = true;
@@ -858,29 +922,17 @@ namespace VectorTileRenderer
                 case "<=":
 
                     var key = (string)filterArray[1];
-
-                    if (operation == "==")
+                    if (!attributes.TryGetValue(key, out var attributeValue))
                     {
-                        if (!attributes.ContainsKey(key))
-                        {
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        // special case, comparing inequality with non existent attribute
-                        if (!attributes.ContainsKey(key))
-                        {
-                            return true;
-                        }
+                        return operation != "==";
                     }
 
-                    if (!(attributes[key] is IComparable))
+                    if (!(attributeValue is IComparable))
                     {
                         throw new NotImplementedException("Comparing colors probably");
                     }
 
-                    var valueA = (IComparable)attributes[key];
+                    var valueA = (IComparable)attributeValue;
                     var valueB = getValue(filterArray[2], attributes);
 
                     if (isNumber(valueA) && isNumber(valueB))
@@ -945,15 +997,14 @@ namespace VectorTileRenderer
             if (operation == "in")
             {
                 var key = filterArray[1] as string;
-                if (!attributes.ContainsKey(key))
+                if (!attributes.TryGetValue(key, out var value))
                 {
                     return false;
                 }
 
-                var value = attributes[key];
-
-                foreach (object item in filterArray.Skip(2))
+                for (int i = 2; i < filterArray.Length; i++)
                 {
+                    var item = filterArray[i];
                     if (getValue(item, attributes).Equals(value))
                     {
                         return true;
@@ -964,15 +1015,14 @@ namespace VectorTileRenderer
             else if (operation == "!in")
             {
                 var key = filterArray[1] as string;
-                if (!attributes.ContainsKey(key))
+                if (!attributes.TryGetValue(key, out var value))
                 {
                     return true;
                 }
 
-                var value = attributes[key];
-
-                foreach (object item in filterArray.Skip(2))
+                for (int i = 2; i < filterArray.Length; i++)
                 {
+                    var item = filterArray[i];
                     if (getValue(item, attributes).Equals(value))
                     {
                         return false;
