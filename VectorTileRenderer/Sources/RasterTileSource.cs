@@ -9,17 +9,17 @@ namespace VectorTileRenderer.Sources
 
         public RasterTileSource(string path)
         {
-            this.Path = path;
+            Path = path;
         }
 
-        public async Task<Stream> GetTile(int x, int y, int zoom)
+        public Task<Stream> GetTile(int x, int y, int zoom)
         {
             var qualifiedPath = Path
                 .Replace("{x}", x.ToString())
                 .Replace("{y}", y.ToString())
                 .Replace("{z}", zoom.ToString());
 
-            return File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            return Task.FromResult<Stream>(File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
         }
     }
 }

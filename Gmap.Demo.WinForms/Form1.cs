@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using IOPath = System.IO.Path;
 
 namespace Gmap.Demo.WinForms
 {
@@ -33,9 +34,12 @@ namespace Gmap.Demo.WinForms
             gmap.MouseWheelZoomType = GMap.NET.MouseWheelZoomType.MousePositionAndCenter;
             this.Controls.Add(gmap);
 
-            var mainDir = "../../../../";
+            var mainDir = AppContext.BaseDirectory;
 
-            var provider = new VectorMbTilesProvider(mainDir + @"tiles/islamabad.mbtiles", mainDir + @"styles/aliflux-style.json", mainDir + @"tile-cache/");
+            var provider = new VectorMbTilesProvider(
+                IOPath.Combine(mainDir, "tiles", "islamabad.mbtiles"),
+                IOPath.Combine(mainDir, "styles", "aliflux-style.json"),
+                IOPath.Combine(mainDir, "tile-cache"));
             gmap.MapProvider = provider;
         }
 

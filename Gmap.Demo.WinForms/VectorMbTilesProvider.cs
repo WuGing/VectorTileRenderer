@@ -2,6 +2,7 @@
 using GMap.NET.MapProviders;
 using GMap.NET.Projections;
 using System;
+using System.IO;
 using SkiaSharp;
 using VectorTileRenderer;
 
@@ -15,9 +16,10 @@ namespace Gmap.Demo.WinForms
 
         public VectorMbTilesProvider(string path, string stylePath, string cachePath)
         {
+            var styleDirectory = Path.GetDirectoryName(stylePath) ?? string.Empty;
             style = new Style(stylePath)
             {
-                FontDirectory = @"styles/fonts/"
+                FontDirectory = Path.Combine(styleDirectory, "fonts")
             };
             this.cachePath = cachePath;
 

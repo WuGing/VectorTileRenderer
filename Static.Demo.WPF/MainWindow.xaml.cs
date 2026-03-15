@@ -19,7 +19,7 @@ namespace Demo.WPF
     public partial class MainWindow : Window
     {
         GlobalMercator gmt = new GlobalMercator();
-        string mainDir = "../../../../";
+        string mainDir = AppContext.BaseDirectory;
 
         public MainWindow()
         {

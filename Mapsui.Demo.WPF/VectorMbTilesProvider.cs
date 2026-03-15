@@ -1,11 +1,12 @@
 ﻿using BruTile;
 using SkiaSharp;
 using System;
+using System.Threading.Tasks;
 using VectorTileRenderer;
 
 namespace Mapsui.Demo.WPF
 {
-    class VectorMbTilesProvider : ITileProvider
+    class VectorMbTilesProvider
     {
         Style style;
         VectorTileRenderer.Sources.MbTilesSource provider;
@@ -23,7 +24,7 @@ namespace Mapsui.Demo.WPF
             style.SetSourceProvider("openmaptiles", provider);
         }
 
-        public byte[] GetTile(TileInfo tileInfo)
+        public Task<byte[]> GetTileAsync(TileInfo tileInfo)
         {
             var canvas = new SkiaCanvas();
             SKBitmap bitmap;
@@ -34,10 +35,10 @@ namespace Mapsui.Demo.WPF
             }
             catch
             {
-                return null;
+                return Task.FromResult<byte[]>(null);
             }
 
-            return GetBytesFromBitmap(bitmap);
+            return Task.FromResult(GetBytesFromBitmap(bitmap));
         }
 
         static byte[] GetBytesFromBitmap(SKBitmap bmp)
