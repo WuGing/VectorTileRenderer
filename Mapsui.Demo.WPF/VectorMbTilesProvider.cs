@@ -26,11 +26,15 @@ namespace Mapsui.Demo.WPF
         private static double totalRenderMs;
         private static int totalFeatureCandidates;
         private static int totalFeatureAccepted;
+        private static int totalGpuRenderedTiles;
+        private static int totalCpuRenderedTiles;
+        private static int totalUnknownRenderedTiles;
         private static readonly ConcurrentDictionary<(int X, int Y, int Z), byte> prefetchedTiles = new ConcurrentDictionary<(int X, int Y, int Z), byte>();
         private static readonly SemaphoreSlim prefetchLimiter = new SemaphoreSlim(2);
 
         private const int ProfileLogEveryNSamples = 40;
-        private const bool EnableNeighborPrefetch = true;
+        private static readonly bool EnableNeighborPrefetch = false;
+        private const RenderBackend SelectedBackend = RenderBackend.Auto;
         private const int PrefetchRadius = 1;
         private const int MaxPrefetchedTileKeys = 50000;
 
@@ -79,6 +83,19 @@ namespace Mapsui.Demo.WPF
                 totalFeatureCandidates += profile.FeatureCandidateCount;
                 totalFeatureAccepted += profile.FeatureAcceptedCount;
 
+                if (string.Equals(profile.Backend, "GPU", StringComparison.OrdinalIgnoreCase))
+                {
+                    totalGpuRenderedTiles++;
+                }
+                else if (string.Equals(profile.Backend, "CPU", StringComparison.OrdinalIgnoreCase))
+                {
+                    totalCpuRenderedTiles++;
+                }
+                else
+                {
+                    totalUnknownRenderedTiles++;
+                }
+
                 if (profileSampleCount < ProfileLogEveryNSamples)
                 {
                     return;
@@ -95,7 +112,7 @@ namespace Mapsui.Demo.WPF
 
                 Trace.WriteLine(
                     string.Format(
-                        "[VectorTileRenderer][Mapsui] avg over {0} tiles => total: {1:0.00} ms, build: {2:0.00} ms (fetch: {3:0.00}, style: {4:0.00}), geometry: {5:0.00} ms, text: {6:0.00} ms, feat: {7:0.0}/{8:0.0}",
+                        "[VectorTileRenderer][Mapsui] avg over {0} tiles => total: {1:0.00} ms, build: {2:0.00} ms (fetch: {3:0.00}, style: {4:0.00}), geometry: {5:0.00} ms, text: {6:0.00} ms, feat: {7:0.0}/{8:0.0}, backend gpu/cpu/u: {9}/{10}/{11}",
                         profileSampleCount,
                         avgTotal,
                         avgBuild,
@@ -104,10 +121,13 @@ namespace Mapsui.Demo.WPF
                         avgGeometry,
                         avgText,
                         avgFeatureAccepted,
-                        avgFeatureCandidates));
+                        avgFeatureCandidates,
+                        totalGpuRenderedTiles,
+                        totalCpuRenderedTiles,
+                        totalUnknownRenderedTiles));
 
                 var summary = string.Format(
-                    "Tiles avg ({0}): total {1:0.00} ms | build {2:0.00} (fetch {3:0.00}, style {4:0.00}) | geom {5:0.00} | text {6:0.00} | feat {7:0}/{8:0}",
+                    "Tiles avg ({0}): total {1:0.00} ms | build {2:0.00} (fetch {3:0.00}, style {4:0.00}) | geom {5:0.00} | text {6:0.00} | feat {7:0}/{8:0} | backend G/C/U {9}/{10}/{11}",
                     profileSampleCount,
                     avgTotal,
                     avgBuild,
@@ -116,7 +136,10 @@ namespace Mapsui.Demo.WPF
                     avgGeometry,
                     avgText,
                     avgFeatureAccepted,
-                    avgFeatureCandidates);
+                    avgFeatureCandidates,
+                    totalGpuRenderedTiles,
+                    totalCpuRenderedTiles,
+                    totalUnknownRenderedTiles);
 
                 var summaryUpdated = ProfileSummaryUpdated;
                 if (summaryUpdated != null)
@@ -133,12 +156,16 @@ namespace Mapsui.Demo.WPF
                 totalRenderMs = 0;
                 totalFeatureCandidates = 0;
                 totalFeatureAccepted = 0;
+                totalGpuRenderedTiles = 0;
+                totalCpuRenderedTiles = 0;
+                totalUnknownRenderedTiles = 0;
             }
         }
 
         public async Task<byte[]> GetTileAsync(TileInfo tileInfo)
         {
-            var canvas = new SkiaCanvas();
+            var canvas = CanvasFactory.Create(SelectedBackend);
+            var backendName = GetBackendName(canvas);
             SKBitmap bitmap;
             var x = (int)tileInfo.Index.Col;
             var y = (int)tileInfo.Index.Row;
@@ -146,16 +173,25 @@ namespace Mapsui.Demo.WPF
 
             try
             {
-                bitmap = await Renderer.RenderCached(
-                    cachePath,
-                    style,
-                    canvas,
-                    x,
-                    y,
-                    z,
-                    256,
-                    256,
-                    1);
+                var previousBackendHint = Renderer.CurrentBackendHint;
+                Renderer.CurrentBackendHint = backendName;
+                try
+                {
+                    bitmap = await Renderer.RenderCached(
+                        cachePath,
+                        style,
+                        canvas,
+                        x,
+                        y,
+                        z,
+                        256,
+                        256,
+                        1);
+                }
+                finally
+                {
+                    Renderer.CurrentBackendHint = previousBackendHint;
+                }
             }
             catch
             {
@@ -205,8 +241,18 @@ namespace Mapsui.Demo.WPF
                 await prefetchLimiter.WaitAsync();
                 try
                 {
-                    var prefetchCanvas = new SkiaCanvas();
-                    await Renderer.RenderCached(cachePath, style, prefetchCanvas, x, y, z, 256, 256, 1);
+                    var prefetchCanvas = CanvasFactory.Create(SelectedBackend);
+                    var backendName = GetBackendName(prefetchCanvas);
+                    var previousBackendHint = Renderer.CurrentBackendHint;
+                    Renderer.CurrentBackendHint = backendName;
+                    try
+                    {
+                        await Renderer.RenderCached(cachePath, style, prefetchCanvas, x, y, z, 256, 256, 1);
+                    }
+                    finally
+                    {
+                        Renderer.CurrentBackendHint = previousBackendHint;
+                    }
                 }
                 catch
                 {
@@ -217,6 +263,16 @@ namespace Mapsui.Demo.WPF
                     prefetchLimiter.Release();
                 }
             });
+        }
+
+        private static string GetBackendName(ICanvas canvas)
+        {
+            if (canvas is SkiaGpuCanvas gpuCanvas && gpuCanvas.IsGpuEnabled)
+            {
+                return "GPU";
+            }
+
+            return "CPU";
         }
 
         static byte[] GetBytesFromBitmap(SKBitmap bmp)

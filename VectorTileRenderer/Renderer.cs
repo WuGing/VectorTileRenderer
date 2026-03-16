@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using SkiaSharp;
 
@@ -13,6 +14,13 @@ namespace VectorTileRenderer
     {
         // TODO make it instance based... maybe
         private static object cacheLock = new object();
+        private static readonly AsyncLocal<string> backendHint = new AsyncLocal<string>();
+
+        public static string CurrentBackendHint
+        {
+            get => backendHint.Value;
+            set => backendHint.Value = value;
+        }
 
         enum VisualLayerType
         {
@@ -38,6 +46,7 @@ namespace VectorTileRenderer
             public int X { get; set; }
             public int Y { get; set; }
             public double Zoom { get; set; }
+            public string Backend { get; set; }
             public double BuildVisualLayersMs { get; set; }
             public double TileFetchDecodeMs { get; set; }
             public double BuildStyleEvalMs { get; set; }
@@ -646,6 +655,7 @@ namespace VectorTileRenderer
                         X = x,
                         Y = y,
                         Zoom = zoom,
+                        Backend = CurrentBackendHint ?? "Unknown",
                         BuildVisualLayersMs = elapsedMs(buildStart, buildEnd),
                         TileFetchDecodeMs = tileFetchDecodeMs,
                         BuildStyleEvalMs = buildStyleEvalMs,

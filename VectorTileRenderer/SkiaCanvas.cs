@@ -11,12 +11,12 @@ namespace VectorTileRenderer
 {
     public class SkiaCanvas : ICanvas
     {
-        int width;
-        int height;
+        protected int width;
+        protected int height;
 
-        SKBitmap bitmap;
-        SKSurface surface;
-        SKCanvas canvas;
+        protected SKBitmap bitmap;
+        protected SKSurface surface;
+        protected SKCanvas canvas;
 
         public bool ClipOverflow { get; set; } = false;
         private Rect clipRectangle;
@@ -27,25 +27,37 @@ namespace VectorTileRenderer
 
         List<Rect> textRectangles = new List<Rect>();
 
-        public void StartDrawing(double width, double height)
+        public virtual void StartDrawing(double width, double height)
         {
             this.width = (int)width;
             this.height = (int)height;
 
             var info = new SKImageInfo(this.width, this.height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
-            bitmap = new SKBitmap(info);
+            if (!TryCreateSurface(info, out surface, out bitmap))
+            {
+                bitmap = new SKBitmap(info);
+                surface = SKSurface.Create(info, bitmap.GetPixels(), bitmap.RowBytes);
+            }
 
-            //var glInterface = GRGlInterface.CreateNativeGlInterface();
-            //grContext = GRContext.Create(GRBackend.OpenGL, glInterface);
-
-            //renderTarget = SkiaGL.CreateRenderTarget();
-            //renderTarget.Width = this.width;
-            //renderTarget.Height = this.height;
-
-
-            surface = SKSurface.Create(info, bitmap.GetPixels(), bitmap.RowBytes);
-            //surface = SKSurface.Create(grContext, renderTarget);
             canvas = surface.Canvas;
+
+            InitializeClipArea();
+        }
+
+        protected virtual bool TryCreateSurface(SKImageInfo info, out SKSurface createdSurface, out SKBitmap createdBitmap)
+        {
+            createdBitmap = null;
+            createdSurface = null;
+            return false;
+        }
+
+        protected virtual void OnBeforeFinishDrawing()
+        {
+        }
+
+        private void InitializeClipArea()
+        {
+            textRectangles.Clear();
 
             double padding = -5;
             clipRectangle = new Rect(padding, padding, this.width - padding * 2, this.height - padding * 2);
@@ -790,6 +802,7 @@ namespace VectorTileRenderer
 
 
             canvas.Flush();
+            OnBeforeFinishDrawing();
 
             return bitmap;
 
