@@ -16,10 +16,26 @@ namespace Mapsui.Demo.WPF
         {
             InitializeComponent();
 
+            VectorMbTilesProvider.ProfileSummaryUpdated += OnProfileSummaryUpdated;
+
             var sphericalPoint = SphericalMercator.FromLonLat(8.542693, 47.368659);
             MyMapControl.Map.Navigator.CenterOn(new MPoint(sphericalPoint.x, sphericalPoint.y));
             MyMapControl.Map.Navigator.ZoomToLevel(12);
             
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            VectorMbTilesProvider.ProfileSummaryUpdated -= OnProfileSummaryUpdated;
+            base.OnClosed(e);
+        }
+
+        private void OnProfileSummaryUpdated(string summary)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                perfOverlayText.Text = summary;
+            }));
         }
 
         private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

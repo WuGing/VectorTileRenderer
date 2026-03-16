@@ -36,16 +36,14 @@ namespace VectorTileRenderer.Sources
         {
             if (Path != "")
             {
-                using (var stream = File.Open(
+                using var stream = File.Open(
                     Path.Replace("{x}", x.ToString())
                         .Replace("{y}", y.ToString())
                         .Replace("{z}", zoom.ToString()),
                     FileMode.Open,
                     FileAccess.Read,
-                    FileShare.Read))
-                {
-                    return Task.FromResult(unzipStream(stream));
-                }
+                    FileShare.Read);
+                return Task.FromResult(unzipStream(stream));
             }
             else if (Stream != null)
             {
@@ -59,13 +57,8 @@ namespace VectorTileRenderer.Sources
         {
             if (isGZipped(stream))
             {
-                using (var zipStream = new GZipStream(stream, CompressionMode.Decompress))
-                using (var resultStream = new MemoryStream())
-                {
-                    zipStream.CopyTo(resultStream);
-                    resultStream.Seek(0, SeekOrigin.Begin);
-                    return loadStream(resultStream);
-                }
+                using var zipStream = new GZipStream(stream, CompressionMode.Decompress, leaveOpen: true);
+                return loadStream(zipStream);
             }
             else
             {
@@ -111,18 +104,25 @@ namespace VectorTileRenderer.Sources
 
                 foreach (var feat in lyr.VectorTileFeatures)
                 {
+                    var featureAttributes = new Dictionary<string, object>(feat.Attributes.Count);
+                    foreach (var pair in feat.Attributes)
+                    {
+                        featureAttributes[pair.Key] = pair.Value;
+                    }
+
                     var vectorFeature = new VectorTileFeature
                     {
                         Extent = 1,
                         GeometryType = convertGeometryType(feat.GeometryType),
-                        Attributes = feat.Attributes.ToDictionary(kv => kv.Key, kv => kv.Value)
+                        Attributes = featureAttributes
                     };
 
                     var vectorGeometry = new List<List<Point>>();
 
                     foreach (var points in feat.Geometry)
                     {
-                        var vectorPoints = new List<Point>();
+                        var pointCountHint = points.Count;
+                        var vectorPoints = pointCountHint > 0 ? new List<Point>(pointCountHint) : new List<Point>();
 
                         foreach (var coordinate in points)
                         {
@@ -150,20 +150,6 @@ namespace VectorTileRenderer.Sources
             return result;
         }
         
-        byte[] readTillEnd(Stream input)
-        {
-            byte[] buffer = new byte[16 * 1024];
-            using (MemoryStream ms = new MemoryStream())
-            {
-                int read;
-                while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    ms.Write(buffer, 0, read);
-                }
-                return ms.ToArray();
-            }
-        }
-
         bool isGZipped(Stream stream)
         {
             return isZipped(stream, 3, "1F-8B-08");

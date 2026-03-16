@@ -20,21 +20,18 @@ namespace VectorTileRenderer.Sources
         public string MBTilesVersion { get; private set; }
         public string Path { get; private set; }
 
-        ConcurrentDictionary<string, VectorTile> tileCache = new ConcurrentDictionary<string, VectorTile>();
-        ConcurrentDictionary<string, object> tileLocks = new ConcurrentDictionary<string, object>();
-        private readonly object dbLock = new object();
+        ConcurrentDictionary<(int X, int Y, int Z), VectorTile> tileCache = new ConcurrentDictionary<(int X, int Y, int Z), VectorTile>();
+        ConcurrentDictionary<(int X, int Y, int Z), object> tileLocks = new ConcurrentDictionary<(int X, int Y, int Z), object>();
+        private readonly string connectionString;
+        private readonly ConcurrentBag<SQLiteConnection> connectionPool = new ConcurrentBag<SQLiteConnection>();
 
         private GlobalMercator gmt = new GlobalMercator();
-
-        SQLiteConnection sharedConnection;
 
 
         public MbTilesSource(string path)
         {
             Path = path;
-
-            sharedConnection = new SQLiteConnection(string.Format("Data Source={0};Version=3;Mode=ReadOnly", this.Path));
-            sharedConnection.Open();
+            connectionString = string.Format("Data Source={0};Version=3;Mode=ReadOnly;Pooling=True", Path);
 
             loadMetadata();
         }
@@ -43,42 +40,50 @@ namespace VectorTileRenderer.Sources
         {
             try
             {
-                using (SQLiteCommand cmd = new SQLiteCommand() { Connection = sharedConnection, CommandText = "SELECT * FROM metadata;" })
+                var connection = rentConnection();
+                try
                 {
-                    SQLiteDataReader reader = cmd.ExecuteReader();
-                    while (reader.Read())
+                    using (SQLiteCommand cmd = new SQLiteCommand() { Connection = connection, CommandText = "SELECT * FROM metadata;" })
                     {
-                        string name = reader["name"].ToString();
-                        switch (name.ToLower())
+                        SQLiteDataReader reader = cmd.ExecuteReader();
+                        while (reader.Read())
                         {
-                            case "bounds":
-                                string val = reader["value"].ToString();
-                                string[] vals = val.Split([',']);
-                                Bounds = new GlobalMercator.GeoExtent() { West = Convert.ToDouble(vals[0]), South = Convert.ToDouble(vals[1]), East = Convert.ToDouble(vals[2]), North = Convert.ToDouble(vals[3]) };
-                                break;
-                            case "center":
-                                val = reader["value"].ToString();
-                                vals = val.Split([',']);
-                                Center = new GlobalMercator.CoordinatePair() { X = Convert.ToDouble(vals[0]), Y = Convert.ToDouble(vals[1]) };
-                                break;
-                            case "minzoom":
-                                MinZoom = Convert.ToInt32(reader["value"]);
-                                break;
-                            case "maxzoom":
-                                MaxZoom = Convert.ToInt32(reader["value"]);
-                                break;
-                            case "name":
-                                Name = reader["value"].ToString();
-                                break;
-                            case "description":
-                                Description = reader["value"].ToString();
-                                break;
-                            case "version":
-                                MBTilesVersion = reader["value"].ToString();
-                                break;
+                            string name = reader["name"].ToString();
+                            switch (name.ToLower())
+                            {
+                                case "bounds":
+                                    string val = reader["value"].ToString();
+                                    string[] vals = val.Split([',']);
+                                    Bounds = new GlobalMercator.GeoExtent() { West = Convert.ToDouble(vals[0]), South = Convert.ToDouble(vals[1]), East = Convert.ToDouble(vals[2]), North = Convert.ToDouble(vals[3]) };
+                                    break;
+                                case "center":
+                                    val = reader["value"].ToString();
+                                    vals = val.Split([',']);
+                                    Center = new GlobalMercator.CoordinatePair() { X = Convert.ToDouble(vals[0]), Y = Convert.ToDouble(vals[1]) };
+                                    break;
+                                case "minzoom":
+                                    MinZoom = Convert.ToInt32(reader["value"]);
+                                    break;
+                                case "maxzoom":
+                                    MaxZoom = Convert.ToInt32(reader["value"]);
+                                    break;
+                                case "name":
+                                    Name = reader["value"].ToString();
+                                    break;
+                                case "description":
+                                    Description = reader["value"].ToString();
+                                    break;
+                                case "version":
+                                    MBTilesVersion = reader["value"].ToString();
+                                    break;
 
+                            }
                         }
                     }
+                }
+                finally
+                {
+                    returnConnection(connection);
                 }
             }
             catch (Exception)
@@ -91,9 +96,10 @@ namespace VectorTileRenderer.Sources
         {
             try
             {
-                lock (dbLock)
+                var connection = rentConnection();
+                try
                 {
-                    using (SQLiteCommand cmd = new SQLiteCommand("SELECT tile_data FROM tiles WHERE tile_column = @x AND tile_row = @y AND zoom_level = @z", sharedConnection))
+                    using (SQLiteCommand cmd = new SQLiteCommand("SELECT tile_data FROM tiles WHERE tile_column = @x AND tile_row = @y AND zoom_level = @z", connection))
                     {
                         cmd.Parameters.AddWithValue("@x", x);
                         cmd.Parameters.AddWithValue("@y", y);
@@ -108,6 +114,10 @@ namespace VectorTileRenderer.Sources
                             }
                         }
                     }
+                }
+                finally
+                {
+                    returnConnection(connection);
                 }
             }
             catch
@@ -217,7 +227,7 @@ namespace VectorTileRenderer.Sources
 
         VectorTile getCachedVectorTile(int x, int y, int zoom)
         {
-            var key = x.ToString() + "," + y.ToString() + "," + zoom.ToString();
+            var key = (x, y, zoom);
 
             var keyLock = tileLocks.GetOrAdd(key, _ => new object());
 
@@ -245,9 +255,42 @@ namespace VectorTileRenderer.Sources
             
         }
 
-        async Task<Stream> ITileSource.GetTile(int x, int y, int zoom)
+        Task<Stream> ITileSource.GetTile(int x, int y, int zoom)
         {
-            return GetRawTile(x, y, zoom);
+            return Task.FromResult(GetRawTile(x, y, zoom));
+        }
+
+        private SQLiteConnection rentConnection()
+        {
+            if (connectionPool.TryTake(out var pooledConnection))
+            {
+                if (pooledConnection.State != System.Data.ConnectionState.Open)
+                {
+                    pooledConnection.Open();
+                }
+
+                return pooledConnection;
+            }
+
+            var connection = new SQLiteConnection(connectionString);
+            connection.Open();
+            return connection;
+        }
+
+        private void returnConnection(SQLiteConnection connection)
+        {
+            if (connection == null)
+            {
+                return;
+            }
+
+            if (connection.State == System.Data.ConnectionState.Broken)
+            {
+                connection.Dispose();
+                return;
+            }
+
+            connectionPool.Add(connection);
         }
     }
 }

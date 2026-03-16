@@ -2,8 +2,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using SkiaSharp;
 
 namespace VectorTileRenderer
@@ -111,6 +111,8 @@ namespace VectorTileRenderer
         //double emToPx = 16;
 
         ConcurrentDictionary<string, Brush[]> brushesCache = new ConcurrentDictionary<string, Brush[]>();
+        private readonly ConcurrentDictionary<string, Color> colorCache = new ConcurrentDictionary<string, Color>();
+        private readonly Dictionary<int, bool> layerFeatureDependencyCache = new Dictionary<int, bool>();
 
         public string FontDirectory { get; set; } = null;
 
@@ -325,6 +327,72 @@ namespace VectorTileRenderer
             }
 
             return Color.White;
+        }
+
+        public bool NeedsFeatureAttributes(Layer layer)
+        {
+            if (layerFeatureDependencyCache.TryGetValue(layer.Index, out var cachedResult))
+            {
+                return cachedResult;
+            }
+
+            var needs = (layer.Filter != null && layer.Filter.Length > 0)
+                || tokenUsesFeatureAttributes(layer.Paint)
+                || tokenUsesFeatureAttributes(layer.Layout);
+
+            layerFeatureDependencyCache[layer.Index] = needs;
+            return needs;
+        }
+
+        private static bool tokenUsesFeatureAttributes(object token)
+        {
+            if (token == null)
+            {
+                return false;
+            }
+
+            if (token is string s)
+            {
+                if (s.IndexOf('{') >= 0 && s.IndexOf('}') > s.IndexOf('{'))
+                {
+                    return true;
+                }
+
+                if (s.Length > 1 && s[0] == '$' && s != "$zoom" && s != "$id")
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (token is object[] arrayToken)
+            {
+                for (int i = 0; i < arrayToken.Length; i++)
+                {
+                    if (tokenUsesFeatureAttributes(arrayToken[i]))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            if (token is Dictionary<string, object> dictToken)
+            {
+                foreach (var pair in dictToken)
+                {
+                    if (tokenUsesFeatureAttributes(pair.Value))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            return false;
         }
 
         //public Brush[] GetBrushesCached(double zoom, double scale, string type, string id, Dictionary<string, object> attributes)
@@ -546,18 +614,7 @@ namespace VectorTileRenderer
                 if (layoutData.ContainsKey("text-field"))
                 {
                     brush.TextField = (string)getValue(layoutData["text-field"], attributes);
-
-                    // TODO check performance implications of Regex.Replace
-                    brush.Text = Regex.Replace(brush.TextField, @"\{([A-Za-z0-9\-\:_]+)\}", (Match m) =>
-                    {
-                        var key = stripBraces(m.Value);
-                        if (attributes.ContainsKey(key))
-                        {
-                            return attributes[key].ToString();
-                        }
-
-                        return "";
-                    }).Trim();
+                    brush.Text = resolveTextField(brush.TextField, attributes).Trim();
                 }
 
                 if (layoutData.ContainsKey("text-font"))
@@ -617,26 +674,47 @@ namespace VectorTileRenderer
             return brush;
         }
 
-        private unsafe string stripBraces(string s)
+        private static string resolveTextField(string textField, Dictionary<string, object> attributes)
         {
-            int len = s.Length;
-            char* newChars = stackalloc char[len];
-            char* currentChar = newChars;
-
-            for (int i = 0; i < len; ++i)
+            if (string.IsNullOrEmpty(textField) || attributes == null || attributes.Count == 0)
             {
-                char c = s[i];
-                switch (c)
-                {
-                    case '{':
-                    case '}':
-                        continue;
-                    default:
-                        *currentChar++ = c;
-                        break;
-                }
+                return textField ?? "";
             }
-            return new string(newChars, 0, (int)(currentChar - newChars));
+
+            if (textField.IndexOf('{') < 0)
+            {
+                return textField;
+            }
+
+            var builder = new StringBuilder(textField.Length + 8);
+
+            for (int i = 0; i < textField.Length; i++)
+            {
+                var c = textField[i];
+
+                if (c != '{')
+                {
+                    builder.Append(c);
+                    continue;
+                }
+
+                var closeIndex = textField.IndexOf('}', i + 1);
+                if (closeIndex < 0)
+                {
+                    builder.Append(c);
+                    continue;
+                }
+
+                var key = textField.Substring(i + 1, closeIndex - i - 1);
+                if (attributes.TryGetValue(key, out var value) && value != null)
+                {
+                    builder.Append(value.ToString());
+                }
+
+                i = closeIndex;
+            }
+
+            return builder.ToString();
         }
 
         private Color parseColor(object iColor)
@@ -648,10 +726,27 @@ namespace VectorTileRenderer
 
             if (iColor.GetType() != typeof(string))
             {
-
+                throw new NotImplementedException("Not implemented color format");
             }
 
             var colorString = (string)iColor;
+
+            if (colorCache.TryGetValue(colorString, out var cachedColor))
+            {
+                return cachedColor;
+            }
+
+            var parsedColor = parseColorString(colorString);
+            colorCache[colorString] = parsedColor;
+            return parsedColor;
+        }
+
+        private Color parseColorString(string colorString)
+        {
+            if (string.IsNullOrEmpty(colorString))
+            {
+                return Color.FromRgb(0, 0, 0);
+            }
 
             if (colorString[0] == '#')
             {
