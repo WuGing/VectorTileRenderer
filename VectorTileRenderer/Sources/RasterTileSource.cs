@@ -1,25 +1,19 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 
-namespace VectorTileRenderer.Sources
+namespace VectorTileRenderer.Sources;
+
+public class RasterTileSource(string path) : ITileSource
 {
-    public class RasterTileSource : ITileSource
+    public string Path { get; private set; } = path;
+
+    public Task<Stream> GetTile(int x, int y, int zoom)
     {
-        public string Path { get; private set; }
+        var qualifiedPath = Path
+            .Replace("{x}", x.ToString())
+            .Replace("{y}", y.ToString())
+            .Replace("{z}", zoom.ToString());
 
-        public RasterTileSource(string path)
-        {
-            Path = path;
-        }
-
-        public Task<Stream> GetTile(int x, int y, int zoom)
-        {
-            var qualifiedPath = Path
-                .Replace("{x}", x.ToString())
-                .Replace("{y}", y.ToString())
-                .Replace("{z}", zoom.ToString());
-
-            return Task.FromResult<Stream>(File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
-        }
+        return Task.FromResult<Stream>(File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
     }
 }

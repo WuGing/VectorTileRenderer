@@ -1,9 +1,8 @@
 ﻿using System.Threading.Tasks;
 
-namespace VectorTileRenderer.Sources
+namespace VectorTileRenderer.Sources;
+
+public interface IVectorTileSource : ITileSource
 {
-    public interface IVectorTileSource : ITileSource
-    {
-        Task<VectorTile> GetVectorTile(int x, int y, int zoom);
-    }
+    Task<VectorTile> GetVectorTile(int x, int y, int zoom);
 }

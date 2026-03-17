@@ -1,43 +1,42 @@
 ﻿using System;
 using System.Text;
 
-namespace VectorTileRenderer
+namespace VectorTileRenderer;
+
+static class Utils
 {
-    static class Utils
+    public static double ConvertRange(double oldValue, double oldMin, double oldMax, double newMin, double newMax, bool clamp = false)
     {
-        public static double ConvertRange(double oldValue, double oldMin, double oldMax, double newMin, double newMax, bool clamp = false)
+        double newRange;
+        double newValue;
+        double oldRange = oldMax - oldMin;
+        if (oldRange == 0)
         {
-            double NewRange;
-            double NewValue;
-            double OldRange = oldMax - oldMin;
-            if (OldRange == 0)
-            {
-                NewValue = newMin;
-            }
-            else
-            {
-                NewRange = newMax - newMin;
-                NewValue = ((oldValue - oldMin) * NewRange / OldRange) + newMin;
-            }
-
-            if (clamp)
-            {
-                NewValue = Math.Min(Math.Max(NewValue, newMin), newMax);
-            }
-
-            return NewValue;
+            newValue = newMin;
+        }
+        else
+        {
+            newRange = newMax - newMin;
+            newValue = ((oldValue - oldMin) * newRange / oldRange) + newMin;
         }
 
-        public static string Sha256(string randomString)
+        if (clamp)
         {
-            var crypt = System.Security.Cryptography.SHA256.Create();
-            var hash = new StringBuilder();
-            byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
-            foreach (byte theByte in crypto)
-            {
-                hash.Append(theByte.ToString("x2"));
-            }
-            return hash.ToString();
+            newValue = Math.Min(Math.Max(newValue, newMin), newMax);
         }
+
+        return newValue;
+    }
+
+    public static string Sha256(string randomString)
+    {
+        var crypt = System.Security.Cryptography.SHA256.Create();
+        var hash = new StringBuilder();
+        byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+        foreach (byte theByte in crypto)
+        {
+            hash.Append(theByte.ToString("x2"));
+        }
+        return hash.ToString();
     }
 }
