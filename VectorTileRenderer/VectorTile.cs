@@ -5,13 +5,13 @@ namespace VectorTileRenderer
     public class VectorTile
     {
         public bool IsOverZoomed { get; set; } = false;
-        public List<VectorTileLayer> Layers = new List<VectorTileLayer>();
+        public List<VectorTileLayer> Layers = [];
 
         public VectorTile ApplyExtent(Rect extent)
         {
-            VectorTile newTile = new VectorTile
+            VectorTile newTile = new()
             {
-                IsOverZoomed = this.IsOverZoomed
+                IsOverZoomed = IsOverZoomed
             };
 
             foreach (var layer in Layers)
@@ -62,16 +62,14 @@ namespace VectorTileRenderer
     {
         public string Name { get; set; }
 
-        public List<VectorTileFeature> Features = new List<VectorTileFeature>();
+        public List<VectorTileFeature> Features = [];
     }
 
     public class VectorTileFeature
     {
         public double Extent { get; set; }
         public string GeometryType { get; set; }
-
-        public Dictionary<string, object> Attributes = new Dictionary<string, object>();
-
-        public List<List<Point>> Geometry = new List<List<Point>>();
+        public Dictionary<string, object> Attributes = [];
+        public List<List<Point>> Geometry = [];
     }
 }

@@ -1,5 +1,4 @@
 ﻿using SkiaSharp;
-using System;
 using System.Runtime.InteropServices;
 
 namespace VectorTileRenderer
@@ -106,10 +105,9 @@ namespace VectorTileRenderer
 
         public static GRBackendRenderTarget CreateRenderTarget()
         {
-            int framebuffer, stencil, samples;
-            Gles.glGetIntegerv(Gles.GL_FRAMEBUFFER_BINDING, out framebuffer);
-            Gles.glGetIntegerv(Gles.GL_STENCIL_BITS, out stencil);
-            Gles.glGetIntegerv(Gles.GL_SAMPLES, out samples);
+            Gles.glGetIntegerv(Gles.GL_FRAMEBUFFER_BINDING, out int framebuffer);
+            Gles.glGetIntegerv(Gles.GL_STENCIL_BITS, out int stencil);
+            Gles.glGetIntegerv(Gles.GL_SAMPLES, out int samples);
 
             int bufferWidth = 0;
             int bufferHeight = 0;

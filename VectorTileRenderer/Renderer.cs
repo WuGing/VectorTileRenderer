@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,8 +13,8 @@ namespace VectorTileRenderer
     public class Renderer
     {
         // TODO make it instance based... maybe
-        private static object cacheLock = new object();
-        private static readonly AsyncLocal<string> backendHint = new AsyncLocal<string>();
+        private static readonly object cacheLock = new();
+        private static readonly AsyncLocal<string> backendHint = new();
 
         public static string CurrentBackendHint
         {
@@ -63,7 +63,7 @@ namespace VectorTileRenderer
         // Optional callback for measuring hot-path timings in real app runs.
         public static Action<RenderProfile> ProfileSink { get; set; }
 
-        static double elapsedMs(long startTimestamp, long endTimestamp)
+        static double ElapsedMs(long startTimestamp, long endTimestamp)
         {
             return (endTimestamp - startTimestamp) * 1000.0 / Stopwatch.Frequency;
         }
@@ -99,7 +99,7 @@ namespace VectorTileRenderer
             {
                 if (File.Exists(path))
                 {
-                    return loadBitmap(path);
+                    return LoadBitmap(path);
                 }
             }
 
@@ -119,14 +119,10 @@ namespace VectorTileRenderer
                                 return;
                             }
 
-                            using (var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite))
-                            {
-                                  using (var image = SKImage.FromBitmap(bitmap))
-                                  using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
-                                  {
-                                      data.SaveTo(fileStream);
-                                  }
-                            }
+                            using var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite);
+                            using var image = SKImage.FromBitmap(bitmap);
+                            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                            data.SaveTo(fileStream);
                         }
                     }
                     catch (Exception)
@@ -139,12 +135,10 @@ namespace VectorTileRenderer
             return bitmap;
         }
 
-        static SKBitmap loadBitmap(string path)
+        static SKBitmap LoadBitmap(string path)
         {
-            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                return SKBitmap.Decode(stream);
-            }
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            return SKBitmap.Decode(stream);
         }
 
         public async static Task<SKBitmap> Render(Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
@@ -173,12 +167,12 @@ namespace VectorTileRenderer
                 buildStart = totalStart;
             }
 
-            Dictionary<Source, Stream> rasterTileCache = new Dictionary<Source, Stream>();
-            Dictionary<Source, VectorTile> vectorTileCache = new Dictionary<Source, VectorTile>();
-            Dictionary<string, List<VectorTileLayer>> categorizedVectorLayers = new Dictionary<string, List<VectorTileLayer>>();
-            Dictionary<VectorTileLayer, Dictionary<string, List<VectorTileFeature>>> tileLayerGeometryBuckets = new Dictionary<VectorTileLayer, Dictionary<string, List<VectorTileFeature>>>();
-            Dictionary<VectorTileFeature, List<List<Point>>> localizedGeometryCache = new Dictionary<VectorTileFeature, List<List<Point>>>();
-            Dictionary<VectorTileFeature, Dictionary<string, object>> featureAttributesCache = new Dictionary<VectorTileFeature, Dictionary<string, object>>();
+            Dictionary<Source, Stream> rasterTileCache = [];
+            Dictionary<Source, VectorTile> vectorTileCache = [];
+            Dictionary<string, List<VectorTileLayer>> categorizedVectorLayers = [];
+            Dictionary<VectorTileLayer, Dictionary<string, List<VectorTileFeature>>> tileLayerGeometryBuckets = [];
+            Dictionary<VectorTileFeature, List<List<Point>>> localizedGeometryCache = [];
+            Dictionary<VectorTileFeature, Dictionary<string, object>> featureAttributesCache = [];
             HashSet<string> whiteListLayerSet = whiteListLayers == null ? null : new HashSet<string>(whiteListLayers);
 
             double actualZoom = zoom;
@@ -191,7 +185,7 @@ namespace VectorTileRenderer
                 actualZoom = zoom - zoomDelta;
             }
 
-            Dictionary<string, object> rasterAttributes = new Dictionary<string, object>()
+            Dictionary<string, object> rasterAttributes = new()
             {
                 ["$zoom"] = actualZoom,
             };
@@ -236,7 +230,7 @@ namespace VectorTileRenderer
 
                                 if (profilingEnabled)
                                 {
-                                    tileFetchDecodeMs += elapsedMs(fetchStart, Stopwatch.GetTimestamp());
+                                    tileFetchDecodeMs += ElapsedMs(fetchStart, Stopwatch.GetTimestamp());
                                 }
 
                                 if (tile == null)
@@ -261,7 +255,7 @@ namespace VectorTileRenderer
                                 {
                                     if (!categorizedVectorLayers.TryGetValue(tileLayer.Name, out var layersByName))
                                     {
-                                        layersByName = new List<VectorTileLayer>();
+                                        layersByName = [];
                                         categorizedVectorLayers[tileLayer.Name] = layersByName;
                                     }
 
@@ -276,31 +270,28 @@ namespace VectorTileRenderer
                         {
                             if (layer.Source.Provider != null)
                             {
-                                if (layer.Source.Provider is Sources.ITileSource)
+                                long fetchStart = 0;
+                                if (profilingEnabled)
                                 {
-                                    long fetchStart = 0;
-                                    if (profilingEnabled)
-                                    {
-                                        fetchStart = Stopwatch.GetTimestamp();
-                                    }
-
-                                    var tile = await layer.Source.Provider.GetTile(x, y, (int)zoom);
-
-                                    if (profilingEnabled)
-                                    {
-                                        tileFetchDecodeMs += elapsedMs(fetchStart, Stopwatch.GetTimestamp());
-                                    }
-
-                                    if (tile == null)
-                                    {
-                                        continue;
-                                        // throwing exceptions screws up the performance
-                                        throw new FileNotFoundException("Could not load tile : " + x + "," + y + "," + zoom + " of " + layer.SourceName);
-                                    }
-
-                                    rasterTileCache[layer.Source] = tile;
-                                    rasterTile = tile;
+                                    fetchStart = Stopwatch.GetTimestamp();
                                 }
+
+                                var tile = await layer.Source.Provider.GetTile(x, y, (int)zoom);
+
+                                if (profilingEnabled)
+                                {
+                                    tileFetchDecodeMs += ElapsedMs(fetchStart, Stopwatch.GetTimestamp());
+                                }
+
+                                if (tile == null)
+                                {
+                                    continue;
+                                    // throwing exceptions screws up the performance
+                                    throw new FileNotFoundException("Could not load tile : " + x + "," + y + "," + zoom + " of " + layer.SourceName);
+                                }
+
+                                rasterTileCache[layer.Source] = tile;
+                                rasterTile = tile;
                             }
                         }
 
@@ -318,7 +309,7 @@ namespace VectorTileRenderer
 
                                 if (profilingEnabled)
                                 {
-                                    buildStyleEvalMs += elapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
+                                    buildStyleEvalMs += ElapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
                                 }
 
                                 if (!brush.Paint.Visibility)
@@ -357,7 +348,7 @@ namespace VectorTileRenderer
 
                             if (profilingEnabled)
                             {
-                                buildStyleEvalMs += elapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
+                                buildStyleEvalMs += ElapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
                             }
 
                             if (!staticLayerBrush.Paint.Visibility)
@@ -398,7 +389,7 @@ namespace VectorTileRenderer
                                 {
                                     if (!localizedGeometryCache.TryGetValue(feature, out var localizedGeometry))
                                     {
-                                        localizedGeometry = localizeGeometry(feature.Geometry, sizeX, sizeY, feature.Extent);
+                                        localizedGeometry = LocalizeGeometry(feature.Geometry, sizeX, sizeY, feature.Extent);
                                         localizedGeometryCache[feature] = localizedGeometry;
                                     }
 
@@ -460,7 +451,7 @@ namespace VectorTileRenderer
 
                                     if (profilingEnabled)
                                     {
-                                        buildStyleEvalMs += elapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
+                                        buildStyleEvalMs += ElapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
                                     }
 
                                     if (!brush.Paint.Visibility)
@@ -475,7 +466,7 @@ namespace VectorTileRenderer
 
                                     if (!localizedGeometryCache.TryGetValue(feature, out var localizedGeometry))
                                     {
-                                        localizedGeometry = localizeGeometry(feature.Geometry, sizeX, sizeY, feature.Extent);
+                                        localizedGeometry = LocalizeGeometry(feature.Geometry, sizeX, sizeY, feature.Extent);
                                         localizedGeometryCache[feature] = localizedGeometry;
                                     }
 
@@ -489,7 +480,7 @@ namespace VectorTileRenderer
                                 }
                                 else if (profilingEnabled)
                                 {
-                                    buildStyleEvalMs += elapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
+                                    buildStyleEvalMs += ElapsedMs(styleEvalStart, Stopwatch.GetTimestamp());
                                 }
                             }
                         }
@@ -556,7 +547,6 @@ namespace VectorTileRenderer
                         }
                         else if (feature.GeometryType == "Polygon")
                         {
-
                             foreach (var polygon in geometry)
                             {
                                 canvas.DrawPolygon(polygon, brush);
@@ -656,12 +646,12 @@ namespace VectorTileRenderer
                         Y = y,
                         Zoom = zoom,
                         Backend = CurrentBackendHint ?? "Unknown",
-                        BuildVisualLayersMs = elapsedMs(buildStart, buildEnd),
+                        BuildVisualLayersMs = ElapsedMs(buildStart, buildEnd),
                         TileFetchDecodeMs = tileFetchDecodeMs,
                         BuildStyleEvalMs = buildStyleEvalMs,
-                        DrawGeometryMs = elapsedMs(geometryStart, geometryEnd),
-                        DrawTextMs = elapsedMs(textStart, textEnd),
-                        TotalMs = elapsedMs(totalStart, textEnd),
+                        DrawGeometryMs = ElapsedMs(geometryStart, geometryEnd),
+                        DrawTextMs = ElapsedMs(textStart, textEnd),
+                        TotalMs = ElapsedMs(totalStart, textEnd),
                         VisualLayerCount = orderedVisualLayers.Count,
                         GeometryDrawCallCount = geometryDrawCallCount,
                         TextDrawCallCount = textDrawCallCount,
@@ -698,25 +688,13 @@ namespace VectorTileRenderer
             return true;
         }
 
-        private static string GetRequiredGeometryTypeForLayer(string layerType)
+        private static string GetRequiredGeometryTypeForLayer(string layerType) => layerType switch
         {
-            if (layerType == "line")
-            {
-                return "LineString";
-            }
-
-            if (layerType == "fill")
-            {
-                return "Polygon";
-            }
-
-            if (layerType == "circle")
-            {
-                return "Point";
-            }
-
-            return null;
-        }
+            "line" => "LineString",
+            "fill" => "Polygon",
+            "circle" => "Point",
+            _ => null
+        };
 
         private static Dictionary<string, List<VectorTileFeature>> BuildGeometryBuckets(List<VectorTileFeature> features)
         {
@@ -726,7 +704,7 @@ namespace VectorTileRenderer
             {
                 if (!buckets.TryGetValue(feature.GeometryType, out var group))
                 {
-                    group = new List<VectorTileFeature>();
+                    group = [];
                     buckets[feature.GeometryType] = group;
                 }
 
@@ -736,7 +714,7 @@ namespace VectorTileRenderer
             return buckets;
         }
 
-        private static List<List<Point>> localizeGeometry(List<List<Point>> coordinates, double sizeX, double sizeY, double extent)
+        private static List<List<Point>> LocalizeGeometry(List<List<Point>> coordinates, double sizeX, double sizeY, double extent)
         {
             var localized = new List<List<Point>>(coordinates.Count);
             var xScale = sizeX / extent;
@@ -761,4 +739,3 @@ namespace VectorTileRenderer
         }
     }
 }
-

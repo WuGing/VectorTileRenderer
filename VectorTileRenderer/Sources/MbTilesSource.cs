@@ -11,6 +11,12 @@ namespace VectorTileRenderer.Sources
 
     public class MbTilesSource : IVectorTileSource
     {
+        private readonly GlobalMercator gmt = new();
+        private readonly string connectionString;
+        private readonly ConcurrentBag<SQLiteConnection> connectionPool = [];
+        private readonly ConcurrentDictionary<(int X, int Y, int Z), VectorTile> tileCache = new();
+        private readonly ConcurrentDictionary<(int X, int Y, int Z), object> tileLocks = new();
+
         public GlobalMercator.GeoExtent Bounds { get; private set; }
         public GlobalMercator.CoordinatePair Center { get; private set; }
         public int MinZoom { get; private set; }
@@ -20,70 +26,70 @@ namespace VectorTileRenderer.Sources
         public string MBTilesVersion { get; private set; }
         public string Path { get; private set; }
 
-        ConcurrentDictionary<(int X, int Y, int Z), VectorTile> tileCache = new ConcurrentDictionary<(int X, int Y, int Z), VectorTile>();
-        ConcurrentDictionary<(int X, int Y, int Z), object> tileLocks = new ConcurrentDictionary<(int X, int Y, int Z), object>();
-        private readonly string connectionString;
-        private readonly ConcurrentBag<SQLiteConnection> connectionPool = new ConcurrentBag<SQLiteConnection>();
-
-        private GlobalMercator gmt = new GlobalMercator();
-
-
         public MbTilesSource(string path)
         {
             Path = path;
             connectionString = string.Format("Data Source={0};Version=3;Mode=ReadOnly;Pooling=True", Path);
 
-            loadMetadata();
+            LoadMetadata();
         }
 
-        private void loadMetadata()
+        private void LoadMetadata()
         {
             try
             {
-                var connection = rentConnection();
+                var connection = RentConnection();
                 try
                 {
-                    using (SQLiteCommand cmd = new SQLiteCommand() { Connection = connection, CommandText = "SELECT * FROM metadata;" })
+                    using SQLiteCommand cmd = new() { Connection = connection, CommandText = "SELECT * FROM metadata;" };
+                    SQLiteDataReader reader = cmd.ExecuteReader();
+                    while (reader.Read())
                     {
-                        SQLiteDataReader reader = cmd.ExecuteReader();
-                        while (reader.Read())
+                        string name = reader["name"].ToString();
+                        switch (name.ToLower())
                         {
-                            string name = reader["name"].ToString();
-                            switch (name.ToLower())
-                            {
-                                case "bounds":
-                                    string val = reader["value"].ToString();
-                                    string[] vals = val.Split([',']);
-                                    Bounds = new GlobalMercator.GeoExtent() { West = Convert.ToDouble(vals[0]), South = Convert.ToDouble(vals[1]), East = Convert.ToDouble(vals[2]), North = Convert.ToDouble(vals[3]) };
-                                    break;
-                                case "center":
-                                    val = reader["value"].ToString();
-                                    vals = val.Split([',']);
-                                    Center = new GlobalMercator.CoordinatePair() { X = Convert.ToDouble(vals[0]), Y = Convert.ToDouble(vals[1]) };
-                                    break;
-                                case "minzoom":
-                                    MinZoom = Convert.ToInt32(reader["value"]);
-                                    break;
-                                case "maxzoom":
-                                    MaxZoom = Convert.ToInt32(reader["value"]);
-                                    break;
-                                case "name":
-                                    Name = reader["value"].ToString();
-                                    break;
-                                case "description":
-                                    Description = reader["value"].ToString();
-                                    break;
-                                case "version":
-                                    MBTilesVersion = reader["value"].ToString();
-                                    break;
+                            case "bounds":
+                                string val = reader["value"].ToString();
+                                string[] vals = val.Split([',']);
+                                Bounds = new GlobalMercator.GeoExtent()
+                                {
+                                    West = Convert.ToDouble(vals[0]),
+                                    South = Convert.ToDouble(vals[1]),
+                                    East = Convert.ToDouble(vals[2]),
+                                    North = Convert.ToDouble(vals[3])
+                                };
+                                break;
+                            case "center":
+                                val = reader["value"].ToString();
+                                vals = val.Split([',']);
+                                Center = new GlobalMercator.CoordinatePair()
+                                {
+                                    X = Convert.ToDouble(vals[0]),
+                                    Y = Convert.ToDouble(vals[1])
+                                };
+                                break;
+                            case "minzoom":
+                                MinZoom = Convert.ToInt32(reader["value"]);
+                                break;
+                            case "maxzoom":
+                                MaxZoom = Convert.ToInt32(reader["value"]);
+                                break;
+                            case "name":
+                                Name = reader["value"].ToString();
+                                break;
+                            case "description":
+                                Description = reader["value"].ToString();
+                                break;
+                            case "version":
+                                MBTilesVersion = reader["value"].ToString();
+                                break;
 
-                            }
                         }
                     }
                 }
                 finally
                 {
-                    returnConnection(connection);
+                    ReturnConnection(connection);
                 }
             }
             catch (Exception)
@@ -96,28 +102,24 @@ namespace VectorTileRenderer.Sources
         {
             try
             {
-                var connection = rentConnection();
+                var connection = RentConnection();
                 try
                 {
-                    using (SQLiteCommand cmd = new SQLiteCommand("SELECT tile_data FROM tiles WHERE tile_column = @x AND tile_row = @y AND zoom_level = @z", connection))
-                    {
-                        cmd.Parameters.AddWithValue("@x", x);
-                        cmd.Parameters.AddWithValue("@y", y);
-                        cmd.Parameters.AddWithValue("@z", zoom);
+                    using SQLiteCommand cmd = new("SELECT tile_data FROM tiles WHERE tile_column = @x AND tile_row = @y AND zoom_level = @z", connection);
+                    cmd.Parameters.AddWithValue("@x", x);
+                    cmd.Parameters.AddWithValue("@y", y);
+                    cmd.Parameters.AddWithValue("@z", zoom);
 
-                        using (SQLiteDataReader reader = cmd.ExecuteReader())
-                        {
-                            if (reader.Read())
-                            {
-                                var rawBytes = (byte[])reader["tile_data"];
-                                return new MemoryStream(rawBytes, writable: false);
-                            }
-                        }
+                    using SQLiteDataReader reader = cmd.ExecuteReader();
+                    if (reader.Read())
+                    {
+                        var rawBytes = (byte[])reader["tile_data"];
+                        return new MemoryStream(rawBytes, writable: false);
                     }
                 }
                 finally
                 {
-                    returnConnection(connection);
+                    ReturnConnection(connection);
                 }
             }
             catch
@@ -131,14 +133,14 @@ namespace VectorTileRenderer.Sources
         public void ExtractTile(int x, int y, int zoom, string path)
         {
             if (File.Exists(path))
-                File.Delete(path);
-
-            using (var fileStream = File.Create(path))
-            using (Stream tileStream = GetRawTile(x, y, zoom))
             {
-                tileStream.Seek(0, SeekOrigin.Begin);
-                tileStream.CopyTo(fileStream);
+                File.Delete(path);
             }
+
+            using var fileStream = File.Create(path);
+            using Stream tileStream = GetRawTile(x, y, zoom);
+            tileStream.Seek(0, SeekOrigin.Begin);
+            tileStream.CopyTo(fileStream);
         }
 
         public Task<VectorTile> GetVectorTile(int x, int y, int zoom)
@@ -146,7 +148,7 @@ namespace VectorTileRenderer.Sources
             var extent = new Rect(0, 0, 1, 1);
             bool overZoomed = false;
 
-            if(zoom > MaxZoom)
+            if (zoom > MaxZoom)
             {
                 var bounds = gmt.TileLatLonBounds(x, y, zoom);
 
@@ -191,7 +193,6 @@ namespace VectorTileRenderer.Sources
                 var newB = Utils.ConvertRange(southEast.Y, biggerBounds.North, biggerBounds.South, 0, 1);
 
                 extent = new Rect(new Point(newL, newT), new Point(newR, newB));
-                //thisZoom = MaxZoom;
 
                 x = biggerTile.X;
                 y = biggerTile.Y;
@@ -202,7 +203,7 @@ namespace VectorTileRenderer.Sources
             
             try
             {
-                var actualTile = getCachedVectorTile(x, y, zoom);
+                var actualTile = GetCachedVectorTile(x, y, zoom);
 
                 if (actualTile == null)
                 {
@@ -218,14 +219,14 @@ namespace VectorTileRenderer.Sources
                 extentTile.IsOverZoomed = true;
 
                 return Task.FromResult(extentTile);
-
-            } catch(Exception)
+            } 
+            catch (Exception)
             {
                 return Task.FromResult<VectorTile>(null);
             }
         }
 
-        VectorTile getCachedVectorTile(int x, int y, int zoom)
+        private VectorTile GetCachedVectorTile(int x, int y, int zoom)
         {
             var key = (x, y, zoom);
 
@@ -238,21 +239,18 @@ namespace VectorTileRenderer.Sources
                     return cachedTile;
                 }
 
-                using (var rawTileStream = GetRawTile(x, y, zoom))
+                using var rawTileStream = GetRawTile(x, y, zoom);
+                if (rawTileStream == null)
                 {
-                    if (rawTileStream == null)
-                    {
-                        return null;
-                    }
-
-                    var pbfTileProvider = new PbfTileSource(rawTileStream);
-                    var tile = pbfTileProvider.GetVectorTile(x, y, zoom).GetAwaiter().GetResult();
-                    tileCache[key] = tile;
-
-                    return tile;
+                    return null;
                 }
+
+                var pbfTileProvider = new PbfTileSource(rawTileStream);
+                var tile = pbfTileProvider.GetVectorTile(x, y, zoom).GetAwaiter().GetResult();
+                tileCache[key] = tile;
+
+                return tile;
             }
-            
         }
 
         Task<Stream> ITileSource.GetTile(int x, int y, int zoom)
@@ -260,7 +258,7 @@ namespace VectorTileRenderer.Sources
             return Task.FromResult(GetRawTile(x, y, zoom));
         }
 
-        private SQLiteConnection rentConnection()
+        private SQLiteConnection RentConnection()
         {
             if (connectionPool.TryTake(out var pooledConnection))
             {
@@ -277,7 +275,7 @@ namespace VectorTileRenderer.Sources
             return connection;
         }
 
-        private void returnConnection(SQLiteConnection connection)
+        private void ReturnConnection(SQLiteConnection connection)
         {
             if (connection == null)
             {

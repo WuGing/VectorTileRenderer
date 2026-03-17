@@ -9,7 +9,7 @@ namespace VectorTileRenderer
 
     public static class CanvasFactory
     {
-        private static readonly object backendProbeLock = new object();
+        private static readonly object backendProbeLock = new();
         private static bool backendProbed;
         private static bool gpuAvailable;
 

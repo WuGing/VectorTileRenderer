@@ -1,26 +1,26 @@
 # VectorTileRenderer
 
-## A comprehensive Vector Map Tile Renderer for .Net/C#
+## A comprehensive vector map tile renderer for .NET/C#
 
 <p align="center">
   <img src="images/zurich.png">
 </p>
 
-Complete vector tile map rendering solution built in C# for .Net projects. 
+Complete vector tile map rendering solution built in C# for .NET projects.
 
 ## Features
 
-The library is packed with almost all the components for building a successful map application:
+The library includes most of the components needed to build a map application:
 
-- Ready to play demos included for GMap .Net, Mapsui, and static maps
-- Comes with 7 styles: Basic, Bright, OSM Liberty, Dark, Runner, Street, and Hybrid.
-- Vector tiles can be loaded from MbTiles database, or Pbf (protocol buffer) file
-- Automatic unzipping of gzipped pbf tiles
-- Support and demos for WPF and WinForms (UWP and .Net core is planned)
+- Ready-to-run demos for GMap .NET, Mapsui, and static maps
+- Includes 7 styles: Basic, Bright, OSM Liberty, Dark, Runner, Street, and Hybrid
+- Vector tiles can be loaded from an MBTiles database or PBF (protocol buffer) file
+- Automatic decompression of gzipped PBF tiles
+- Support and demos for WPF and WinForms
 - Support for basic satellite and hybrid satellite raster tiles
-- Plug and play support for multiple rendering engines.
-- Compatable with [mapbox/openmaptiles vector tile specification](https://www.mapbox.com/vector-tiles/specification/)
-- Supports [mapbox style specification](https://www.mapbox.com/mapbox-gl-js/style-spec/)
+- Plug-and-play support for multiple rendering engines
+- Compatible with the [Mapbox/OpenMapTiles vector tile specification](https://www.mapbox.com/vector-tiles/specification/)
+- Supports the [Mapbox style specification](https://www.mapbox.com/mapbox-gl-js/style-spec/)
 - Stress free MIT License
 
 ![](images/zurich-basic.png) ![](images/zurich-bright.png) ![](images/zurich-light.png)
@@ -30,7 +30,7 @@ The library is packed with almost all the components for building a successful m
 
 The maps that we see in online and offline applications are composed of blocks of square tiles. Each tile is an image, and the map is basically a grid of these images. In traditional apps, these images were in PNG/JPEG format, and are fetched from the server and displayed on the client.
 
-Vector Tiles are a relatively newer concept. They operate almost like an SVG image. The server instead of sending full PNG/JPEG image tiles, it just sends vector data which is composed of paths, polygons, points, and text. That vector data is rendered on the client side. That way, a developer can choose how he wants to display a map. Devs can color the roads blue, and the sea as teal; they can hide certain features of a map; or they can manipulate the map their own way. Vector tiles have the following advantages:
+Vector tiles are a newer concept and behave similarly to SVG. Instead of sending full PNG/JPEG image tiles, the server sends vector data composed of paths, polygons, points, and text. That vector data is rendered on the client side. This gives developers control over map appearance: road colors, water styling, feature visibility, and more. Vector tiles have the following advantages:
 
 - They have a small size, and can save a lot of bandwidth.
 - They are highly customizable in every aspect.
@@ -109,9 +109,9 @@ imageView.Source = bitmap;
 
  ![](images/hybrid.png)
 
-## Vector Map in Mapsui and GMap .Net
+## Vector Map in Mapsui and GMap .NET
 
-The repository contains demos for showing vector tiles on both Mapsui and Gmap .Net. The integration code is pretty basic and should be easy to modify if needed.
+The repository contains demos for showing vector tiles in both Mapsui and GMap .NET. The integration code is intentionally simple and easy to modify.
 
 ### Using vector mbtiles data in Mapsui
 
@@ -135,21 +135,21 @@ var provider = new VectorMbTilesProvider(@"tiles/zurich.mbtiles", @"styles/basic
 gmap.MapProvider = provider;
 ```
 
-## Using Mapbox tiles and styles
+## Using Mapbox Tiles and Styles
 
-In terms of format and specifications, the mapbox tiles and styles are similar to openmaptiles tiles and styles. But they are different in terms of the naming convention and terminologies, which makes them incompatable for mix and match. For mapbox tiles, only the mapbox styles would work.
+In terms of format and specifications, Mapbox tiles and styles are similar to OpenMapTiles tiles and styles. However, naming conventions and terminology differ, so they are not directly compatible for mix-and-match use. For Mapbox tiles, use Mapbox-compatible styles.
 
-The VectorTileRender has support for both mapbox and openmaptiles. But a compatable style has to be used for rendering.
+VectorTileRenderer supports both Mapbox and OpenMapTiles formats, but a compatible style must be used for rendering.
 
 ![](images/NY.png) ![](images/NY2.png)
 
 ## Known issues
 
-The entire project including the demos, integrations, and optimization techniques was developed by myself in 4 days. I can't call this production ready yet, but I couldn't encounter any significant issues while testing the demos, except for these:
+The entire project, including demos, integrations, and optimization techniques, was developed rapidly and is not yet positioned as production-ready. While testing the demos, these are the main known issues:
 
-- At some places, the text might be cut off or distorted at edges.
-- There's no mechanism for purging old cache in tiles-cache directory, yet.
-- It uses SkiaSharp for rendering which is mostly done on CPU, so the tile loading might show some lag.
+- In some places, text may be cut off or distorted at edges.
+- There is no mechanism yet to purge old cache entries in the `tiles-cache` directory.
+- Rendering is SkiaSharp-based and mostly CPU-driven, so tile loading may show some lag.
 
 ## GPU powered vector map drawing
 
@@ -190,11 +190,7 @@ Notes:
 
 ## Contribution
 
-The project has some potential since it is probably the only open-source vector tile rendering system for Windows. Therefore, it actively needs some good contribution support. Bug reports, suggestions and pull requests are all welcome. Please submit them to the [GitHub issue tracker](https://github.com/AliFlux/VectorTileRenderer/issues).
-
-## Stay In Touch
-
-For latest releases and announcements, check out my site: [aliashraf.net](http://aliashraf.net)
+The project has strong potential and would benefit from ongoing contributions. Bug reports, suggestions, and pull requests are all welcome. Please submit them through the [GitHub issue tracker](https://github.com/WuGing/VectorTileRenderer/issues).
 
 ## License
 

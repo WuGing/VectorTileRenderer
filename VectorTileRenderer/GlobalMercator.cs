@@ -41,9 +41,9 @@ namespace VectorTileRenderer
 
     public class GlobalMercator
     {
-        private int tileSize;
-        private double initialResolution;
-        private double originShift;
+        private readonly int tileSize;
+        private readonly double initialResolution;
+        private readonly double originShift;
         public class CoordinatePair
         {
             public double X { get; set; }
@@ -75,7 +75,7 @@ namespace VectorTileRenderer
         {
             try
             {
-                CoordinatePair retval = new CoordinatePair
+                CoordinatePair retval = new()
                 {
                     X = lon * originShift / 180.0,
                     Y = Math.Log(Math.Tan((90 + lat) * Math.PI / 360.0)) / (Math.PI / 180.0)
@@ -93,7 +93,7 @@ namespace VectorTileRenderer
         {
             try
             {
-                CoordinatePair retval = new CoordinatePair
+                CoordinatePair retval = new()
                 {
                     X = mx / originShift * 180.0,
                     Y = my / originShift * 180.0
@@ -112,7 +112,7 @@ namespace VectorTileRenderer
             try
             {
                 var res = Resolution(zoom);
-                CoordinatePair retval = new CoordinatePair
+                CoordinatePair retval = new()
                 {
                     X = px * res - originShift,
                     Y = py * res - originShift
@@ -130,7 +130,7 @@ namespace VectorTileRenderer
             try
             {
                 var res = Resolution(zoom);
-                CoordinatePair retval = new CoordinatePair
+                CoordinatePair retval = new()
                 {
                     X = (mx + originShift) / res,
                     Y = (my + originShift) / res
@@ -147,7 +147,7 @@ namespace VectorTileRenderer
         {
             try
             {
-                TileAddress retval = new TileAddress
+                TileAddress retval = new()
                 {
                     X = (int)(Math.Ceiling(Convert.ToDouble(px / tileSize)) - 1),
                     Y = (int)(Math.Ceiling(Convert.ToDouble(py / tileSize)) - 1)
@@ -209,7 +209,7 @@ namespace VectorTileRenderer
             {
                 var min = PixelsToMeters(tx * tileSize, ty * tileSize, zoom);
                 var max = PixelsToMeters((tx + 1) * tileSize, (ty + 1) * tileSize, zoom);
-                GeoExtent retval = new GeoExtent()
+                GeoExtent retval = new()
                 {
                     North = max.Y,
                     South = min.Y,
@@ -231,7 +231,7 @@ namespace VectorTileRenderer
                 var bounds = TileBounds(tx, ty, zoom);
                 var min = MetersToLatLon(bounds.West, bounds.South);
                 var max = MetersToLatLon(bounds.East, bounds.North);
-                GeoExtent retval = new GeoExtent()
+                GeoExtent retval = new()
                 {
                     North = max.Y,
                     South = min.Y,
@@ -246,11 +246,11 @@ namespace VectorTileRenderer
             }
         }
 
-        public TileAddress GoogleTile(int tx, int ty, int zoom)
+        public static TileAddress GoogleTile(int tx, int ty, int zoom)
         {
             try
             {
-                TileAddress retval = new TileAddress
+                TileAddress retval = new()
                 {
                     X = tx,
                     Y = Convert.ToInt32(Math.Pow(2, zoom) - 1 - ty)
@@ -263,7 +263,7 @@ namespace VectorTileRenderer
             }
         }
 
-        public string QuadTree(int tx, int ty, int zoom)
+        public static string QuadTree(int tx, int ty, int zoom)
         {
             try
             {
@@ -292,7 +292,7 @@ namespace VectorTileRenderer
             }
         }
 
-        public TileAddress QuadTreeToTile(string quadtree, int zoom)
+        public static TileAddress QuadTreeToTile(string quadtree, int zoom)
         {
             try
             {
@@ -314,7 +314,7 @@ namespace VectorTileRenderer
                 }
 
                 ty = (1 << zoom) - 1 - ty;
-                TileAddress retval = new TileAddress
+                TileAddress retval = new()
                 {
                     X = tx,
                     Y = ty

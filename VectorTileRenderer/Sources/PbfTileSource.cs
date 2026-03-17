@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace VectorTileRenderer.Sources
@@ -15,12 +14,12 @@ namespace VectorTileRenderer.Sources
 
         public PbfTileSource(string path)
         {
-            this.Path = path;
+            Path = path;
         }
 
         public PbfTileSource(Stream stream)
         {
-            this.Stream = stream;
+            Stream = stream;
         }
 
         public Task<Stream> GetTile(int x, int y, int zoom)
@@ -43,55 +42,45 @@ namespace VectorTileRenderer.Sources
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.Read);
-                return Task.FromResult(unzipStream(stream));
+                return Task.FromResult(UnzipStream(stream));
             }
             else if (Stream != null)
             {
-                return Task.FromResult(unzipStream(Stream));
+                return Task.FromResult(UnzipStream(Stream));
             }
 
             return Task.FromResult<VectorTile>(null);
         }
 
-        private VectorTile unzipStream(Stream stream)
+        private VectorTile UnzipStream(Stream stream)
         {
-            if (isGZipped(stream))
+            if (PbfTileSource.IsGZipped(stream))
             {
                 using var zipStream = new GZipStream(stream, CompressionMode.Decompress, leaveOpen: true);
-                return loadStream(zipStream);
+                return LoadStream(zipStream);
             }
             else
             {
-                return loadStream(stream);
+                return LoadStream(stream);
             }
         }
         
-        private VectorTile loadStream(Stream stream)
+        private VectorTile LoadStream(Stream stream)
         {
             var mbLayers = VectorTileParser.Parse(stream);
 
-            return baseTileToVector(mbLayers);
+            return BaseTileToVector(mbLayers);
         }
 
-        static string convertGeometryType(Tile.GeomType type)
+        private static string ConvertGeometryType(Tile.GeomType type) => type switch
         {
-            if (type == Tile.GeomType.LineString)
-            {
-                return "LineString";
-            } else if (type == Tile.GeomType.Point)
-            {
-                return "Point";
-            }
-            else if (type == Tile.GeomType.Polygon)
-            {
-                return "Polygon";
-            } else
-            {
-                return "Unknown";
-            }
-        }
+            Tile.GeomType.LineString => "LineString",
+            Tile.GeomType.Point => "Point",
+            Tile.GeomType.Polygon => "Polygon",
+            _ => "Unknown"
+        };
 
-        private static VectorTile baseTileToVector(List<Mapbox.Vector.Tile.VectorTileLayer> baseTile)
+        private static VectorTile BaseTileToVector(List<Mapbox.Vector.Tile.VectorTileLayer> baseTile)
         {
             var result = new VectorTile();
 
@@ -113,7 +102,7 @@ namespace VectorTileRenderer.Sources
                     var vectorFeature = new VectorTileFeature
                     {
                         Extent = 1,
-                        GeometryType = convertGeometryType(feat.GeometryType),
+                        GeometryType = ConvertGeometryType(feat.GeometryType),
                         Attributes = featureAttributes
                     };
 
@@ -122,7 +111,7 @@ namespace VectorTileRenderer.Sources
                     foreach (var points in feat.Geometry)
                     {
                         var pointCountHint = points.Count;
-                        var vectorPoints = pointCountHint > 0 ? new List<Point>(pointCountHint) : new List<Point>();
+                        var vectorPoints = pointCountHint > 0 ? new List<Point>(pointCountHint) : [];
 
                         foreach (var coordinate in points)
                         {
@@ -130,11 +119,6 @@ namespace VectorTileRenderer.Sources
                             var dY = coordinate.Y / (double)feat.Extent;
 
                             vectorPoints.Add(new Point(dX, dY));
-
-                            //var newX = Utils.ConvertRange(dX, extent.Left, extent.Right, 0, vectorFeature.Extent);
-                            //var newY = Utils.ConvertRange(dY, extent.Top, extent.Bottom, 0, vectorFeature.Extent);
-
-                            //vectorPoints.Add(new Point(newX, newY));
                         }
 
                         vectorGeometry.Add(vectorPoints);
@@ -150,24 +134,29 @@ namespace VectorTileRenderer.Sources
             return result;
         }
         
-        bool isGZipped(Stream stream)
+        private static bool IsGZipped(Stream stream)
         {
-            return isZipped(stream, 3, "1F-8B-08");
+            return IsZipped(stream, 3, "1F-8B-08");
         }
 
-        bool isZipped(Stream stream, int signatureSize = 4, string expectedSignature = "50-4B-03-04")
+        private static bool IsZipped(Stream stream, int signatureSize = 4, string expectedSignature = "50-4B-03-04")
         {
             if (stream.Length < signatureSize)
+            {   
                 return false;
+            }
+
             byte[] signature = new byte[signatureSize];
             int bytesRequired = signatureSize;
             int index = 0;
+
             while (bytesRequired > 0)
             {
                 int bytesRead = stream.Read(signature, index, bytesRequired);
                 bytesRequired -= bytesRead;
                 index += bytesRead;
             }
+
             stream.Seek(0, SeekOrigin.Begin);
             string actualSignature = BitConverter.ToString(signature);
             if (actualSignature == expectedSignature) return true;

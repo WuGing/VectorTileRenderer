@@ -3,17 +3,11 @@ using System;
 
 namespace VectorTileRenderer
 {
-    public class SkiaGpuCanvas : SkiaCanvas
+    public class SkiaGpuCanvas(GRContext context) : SkiaCanvas
     {
-        private readonly GRContext grContext;
+        private readonly GRContext grContext = context;
 
-        public bool IsGpuEnabled { get; private set; }
-
-        public SkiaGpuCanvas(GRContext context)
-        {
-            grContext = context;
-            IsGpuEnabled = context != null;
-        }
+        public bool IsGpuEnabled { get; private set; } = context != null;
 
         public static SkiaGpuCanvas TryCreate()
         {
@@ -71,15 +65,13 @@ namespace VectorTileRenderer
                 return;
             }
 
-            using (var image = surface.Snapshot())
+            using var image = surface.Snapshot();
+            if (image == null)
             {
-                if (image == null)
-                {
-                    return;
-                }
-
-                image.ReadPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0);
+                return;
             }
+
+            image.ReadPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0);
         }
     }
 }

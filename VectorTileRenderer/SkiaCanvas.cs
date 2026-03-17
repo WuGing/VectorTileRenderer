@@ -5,7 +5,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace VectorTileRenderer
 {
@@ -20,12 +19,12 @@ namespace VectorTileRenderer
 
         public bool ClipOverflow { get; set; } = false;
         private Rect clipRectangle;
-        Path64 clipRectanglePath;
+        private Path64 clipRectanglePath;
 
-        ConcurrentDictionary<string, SKTypeface> fontPairs = new ConcurrentDictionary<string, SKTypeface>();
-        private static readonly Object fontLock = new Object();
+        private readonly ConcurrentDictionary<string, SKTypeface> fontPairs = new();
+        private static readonly object fontLock = new();
 
-        List<Rect> textRectangles = new List<Rect>();
+        private readonly List<Rect> textRectangles = [];
 
         public virtual void StartDrawing(double width, double height)
         {
@@ -60,7 +59,7 @@ namespace VectorTileRenderer
             textRectangles.Clear();
 
             double padding = -5;
-            clipRectangle = new Rect(padding, padding, this.width - padding * 2, this.height - padding * 2);
+            clipRectangle = new Rect(padding, padding, width - padding * 2, height - padding * 2);
 
             clipRectanglePath =
             [
@@ -82,19 +81,12 @@ namespace VectorTileRenderer
             canvas.Clear(new SKColor(style.Paint.BackgroundColor.R, style.Paint.BackgroundColor.G, style.Paint.BackgroundColor.B, style.Paint.BackgroundColor.A));
         }
 
-        SKStrokeCap convertCap(PenLineCap cap)
+        private static SKStrokeCap ConvertCap(PenLineCap cap) => cap switch
         {
-            if (cap == PenLineCap.Flat)
-            {
-                return SKStrokeCap.Butt;
-            }
-            else if (cap == PenLineCap.Round)
-            {
-                return SKStrokeCap.Round;
-            }
-
-            return SKStrokeCap.Square;
-        }
+            PenLineCap.Flat => SKStrokeCap.Butt,
+            PenLineCap.Round => SKStrokeCap.Round,
+            _ => SKStrokeCap.Square,
+        };
 
         //private double getAngle(double x1, double y1, double x2, double y2)
         //{
@@ -137,12 +129,12 @@ namespace VectorTileRenderer
         //    return sum / 2;
         //}
 
-        double clamp(double number, double min = 0, double max = 1)
+        private static double Clamp(double number, double min = 0, double max = 1)
         {
             return Math.Max(min, Math.Min(max, number));
         }
 
-        List<List<Point>> clipPolygon(List<Point> geometry) // may break polygons into multiple ones
+        private List<List<Point>> ClipPolygon(List<Point> geometry) // may break polygons into multiple ones
         {
             var polygon = new Path64();
 
@@ -164,15 +156,15 @@ namespace VectorTileRenderer
             return null;
         }
 
-        List<Point> clipLine(List<Point> geometry)
+        private List<Point> ClipLine(List<Point> geometry)
         {
             return LineClipper.ClipPolyline(geometry, clipRectangle);
         }
 
-        SKPath getPathFromGeometry(List<Point> geometry)
+        private static SKPath GetPathFromGeometry(List<Point> geometry)
         {
 
-            SKPath path = new SKPath
+            SKPath path = new()
             {
                 FillType = SKPathFillType.EvenOdd,
             };
@@ -182,7 +174,6 @@ namespace VectorTileRenderer
             path.MoveTo((float)firstPoint.X, (float)firstPoint.Y);
             foreach (var point in geometry.Skip(1))
             {
-                var lastPoint = path.LastPoint;
                 path.LineTo((float)point.X, (float)point.Y);
             }
 
@@ -193,31 +184,31 @@ namespace VectorTileRenderer
         {
             if (ClipOverflow)
             {
-                geometry = clipLine(geometry);
+                geometry = ClipLine(geometry);
                 if (geometry == null)
                 {
                     return;
                 }
             }
 
-            var path = getPathFromGeometry(geometry);
+            var path = GetPathFromGeometry(geometry);
             if (path == null)
             {
                 return;
             }
 
-            SKPaint fillPaint = new SKPaint
+            SKPaint fillPaint = new()
             {
                 Style = SKPaintStyle.Stroke,
-                StrokeCap = convertCap(style.Paint.LineCap),
+                StrokeCap = ConvertCap(style.Paint.LineCap),
                 StrokeWidth = (float)style.Paint.LineWidth,
-                Color = new SKColor(style.Paint.LineColor.R, style.Paint.LineColor.G, style.Paint.LineColor.B, (byte)clamp(style.Paint.LineColor.A * style.Paint.LineOpacity, 0, 255)),
+                Color = new SKColor(style.Paint.LineColor.R, style.Paint.LineColor.G, style.Paint.LineColor.B, (byte)Clamp(style.Paint.LineColor.A * style.Paint.LineOpacity, 0, 255)),
                 IsAntialias = true,
             };
 
             if (style.Paint.LineDashArray.Count() > 0)
             {
-                var effect = SKPathEffect.CreateDash(style.Paint.LineDashArray.Select(n => (float)n).ToArray(), 0);
+                var effect = SKPathEffect.CreateDash([.. style.Paint.LineDashArray.Select(n => (float)n)], 0);
                 fillPaint.PathEffect = effect;
             }
 
@@ -226,57 +217,47 @@ namespace VectorTileRenderer
             canvas.DrawPath(path, fillPaint);
         }
 
-        SKTextAlign convertAlignment(TextAlignment alignment)
+        private static SKTextAlign ConvertAlignment(TextAlignment alignment) => alignment switch
         {
-            if (alignment == TextAlignment.Center)
-            {
-                return SKTextAlign.Center;
-            }
-            else if (alignment == TextAlignment.Left)
-            {
-                return SKTextAlign.Left;
-            }
-            else if (alignment == TextAlignment.Right)
-            {
-                return SKTextAlign.Right;
-            }
+            TextAlignment.Center => SKTextAlign.Center,
+            TextAlignment.Left => SKTextAlign.Left,
+            TextAlignment.Right => SKTextAlign.Right,
+            _ => SKTextAlign.Center,
+        };
 
-            return SKTextAlign.Center;
-        }
-
-        SKPaint getTextStrokePaint(Brush style)
+        private static SKPaint GetTextStrokePaint(Brush style)
         {
             var paint = new SKPaint()
             {
                 IsStroke = true,
                 StrokeWidth = (float)style.Paint.TextStrokeWidth,
-                Color = new SKColor(style.Paint.TextStrokeColor.R, style.Paint.TextStrokeColor.G, style.Paint.TextStrokeColor.B, (byte)clamp(style.Paint.TextStrokeColor.A * style.Paint.TextOpacity, 0, 255)),
+                Color = new SKColor(style.Paint.TextStrokeColor.R, style.Paint.TextStrokeColor.G, style.Paint.TextStrokeColor.B, (byte)Clamp(style.Paint.TextStrokeColor.A * style.Paint.TextOpacity, 0, 255)),
                 IsAntialias = true,
             };
 
             return paint;
         }
 
-        SKFont getTextFont(Brush style, SKTypeface typeface = null)
+        private SKFont GetTextFont(Brush style, SKTypeface typeface = null)
         {
-            return new SKFont(typeface ?? getFont(style.Paint.TextFont, style), (float)style.Paint.TextSize)
+            return new SKFont(typeface ?? GetFont(style.Paint.TextFont, style), (float)style.Paint.TextSize)
             {
                 Hinting = SKFontHinting.Normal,
             };
         }
 
-        SKPaint getTextPaint(Brush style)
+        private static SKPaint GetTextPaint(Brush style)
         {
             var paint = new SKPaint()
             {
-                Color = new SKColor(style.Paint.TextColor.R, style.Paint.TextColor.G, style.Paint.TextColor.B, (byte)clamp(style.Paint.TextColor.A * style.Paint.TextOpacity, 0, 255)),
+                Color = new SKColor(style.Paint.TextColor.R, style.Paint.TextColor.G, style.Paint.TextColor.B, (byte)Clamp(style.Paint.TextColor.A * style.Paint.TextOpacity, 0, 255)),
                 IsAntialias = true,
             };
 
             return paint;
         }
 
-        string applyTextTransform(string text, Brush style)
+        private static string ApplyTextTransform(string text, Brush style)
         {
             if (text.Length == 0)
             {
@@ -295,23 +276,23 @@ namespace VectorTileRenderer
             return text;
         }
 
-        string transformText(string text, Brush style, SKPaint paint, SKFont font)
+        private static string TransformText(string text, Brush style, SKPaint paint, SKFont font)
         {
-            text = applyTextTransform(text, style);
+            text = ApplyTextTransform(text, style);
 
-            text = breakText(text, paint, font, style);
+            text = BreakText(text, paint, font, style);
 
             return text;
             //return Encoding.UTF32.GetBytes(newText);
         }
 
-        string transformTextSingleLine(string text, Brush style)
+        private static string TransformTextSingleLine(string text, Brush style)
         {
-            text = applyTextTransform(text, style);
+            text = ApplyTextTransform(text, style);
             return text.Replace('\r', ' ').Replace('\n', ' ').Trim();
         }
 
-        int breakTextLength(string text, float maxWidth, SKPaint paint, SKFont font)
+        private static int BreakTextLength(string text, float maxWidth, SKPaint paint, SKFont font)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -343,14 +324,14 @@ namespace VectorTileRenderer
             return Math.Max(1, high);
         }
 
-        string breakText(string input, SKPaint paint, SKFont font, Brush style)
+        private static string BreakText(string input, SKPaint paint, SKFont font, Brush style)
         {
             var restOfText = input;
             var brokenText = "";
             var maxWidth = (float)(style.Paint.TextMaxWidth * style.Paint.TextSize);
             do
             {
-                var lineLength = breakTextLength(restOfText, maxWidth, paint, font);
+                var lineLength = SkiaCanvas.BreakTextLength(restOfText, maxWidth, paint, font);
 
                 if (lineLength == restOfText.Length)
                 {
@@ -359,7 +340,7 @@ namespace VectorTileRenderer
                     break;
                 }
 
-                var lastSpaceIndex = restOfText.LastIndexOf(' ', (int)(lineLength - 1));
+                var lastSpaceIndex = restOfText.LastIndexOf(' ', lineLength - 1);
                 if (lastSpaceIndex == -1 || lastSpaceIndex == 0)
                 {
                     // no more spaces, probably ;)
@@ -367,16 +348,16 @@ namespace VectorTileRenderer
                     break;
                 }
 
-                brokenText += restOfText.Substring(0, (int)lastSpaceIndex).Trim() + "\n";
+                brokenText += restOfText.Substring(0, lastSpaceIndex).Trim() + "\n";
 
-                restOfText = restOfText.Substring((int)lastSpaceIndex, restOfText.Length - (int)lastSpaceIndex);
+                restOfText = restOfText.Substring(lastSpaceIndex);
 
             } while (restOfText.Length > 0);
 
             return brokenText.Trim();
         }
 
-        bool textCollides(Rect rectangle)
+        private bool TextCollides(Rect rectangle)
         {
             foreach (var rect in textRectangles)
             {
@@ -388,7 +369,7 @@ namespace VectorTileRenderer
             return false;
         }
 
-        SKTypeface getFont(string[] familyNames, Brush style)
+        private SKTypeface GetFont(string[] familyNames, Brush style)
         {
             lock (fontLock)
             {
@@ -402,7 +383,7 @@ namespace VectorTileRenderer
                     if (style.GlyphsDirectory != null)
                     {
                         // check file system for ttf
-                        var newType = SKTypeface.FromFile(System.IO.Path.Combine(style.GlyphsDirectory, name + ".ttf"));
+                        var newType = SKTypeface.FromFile(Path.Combine(style.GlyphsDirectory, name + ".ttf"));
                         if (newType != null)
                         {
                             fontPairs[name] = newType;
@@ -410,7 +391,7 @@ namespace VectorTileRenderer
                         }
 
                         // check file system for otf
-                        newType = SKTypeface.FromFile(System.IO.Path.Combine(style.GlyphsDirectory, name + ".otf"));
+                        newType = SKTypeface.FromFile(Path.Combine(style.GlyphsDirectory, name + ".otf"));
                         if (newType != null)
                         {
                             fontPairs[name] = newType;
@@ -435,20 +416,19 @@ namespace VectorTileRenderer
             }
         }
 
-        SKTypeface qualifyTypeface(string text, SKTypeface typeface)
+        private static SKTypeface QualifyTypeface(string text, SKTypeface typeface)
         {
             var glyphs = new ushort[typeface.CountGlyphs(text)];
             if (glyphs.Length < text.Length)
             {
                 var fm = SKFontManager.Default;
-                var charIdx = (glyphs.Length > 0) ? glyphs.Length : 0;
                 return fm.MatchCharacter(text[glyphs.Length]);
             }
 
             return typeface;
         }
 
-        void qualifyTypeface(Brush style, SKFont font)
+        private static void QualifyTypeface(Brush style, SKFont font)
         {
             var typeface = font.Typeface;
             if (typeface == null)
@@ -460,7 +440,6 @@ namespace VectorTileRenderer
             if (glyphs.Length < style.Text.Length)
             {
                 var fm = SKFontManager.Default;
-                var charIdx = (glyphs.Length > 0) ? glyphs.Length : 0;
                 var newTypeface = fm.MatchCharacter(style.Text[glyphs.Length]);
 
                 if (newTypeface == null)
@@ -475,12 +454,11 @@ namespace VectorTileRenderer
                 {
                     // still causing issues
                     // so we cut the rest
-                    charIdx = (glyphs.Length > 0) ? glyphs.Length : 0;
+                    int charIdx = (glyphs.Length > 0) ? glyphs.Length : 0;
 
                     style.Text = style.Text.Substring(0, charIdx);
                 }
             }
-
         }
 
         public void DrawText(Point geometry, Brush style)
@@ -491,23 +469,23 @@ namespace VectorTileRenderer
                 //return;
             }
 
-            var paint = getTextPaint(style);
-            var font = getTextFont(style);
-            qualifyTypeface(style, font);
-            var textAlign = convertAlignment(style.Paint.TextJustify);
+            var paint = SkiaCanvas.GetTextPaint(style);
+            var font = GetTextFont(style);
+            SkiaCanvas.QualifyTypeface(style, font);
+            var textAlign = ConvertAlignment(style.Paint.TextJustify);
 
-            var strokePaint = getTextStrokePaint(style);
-            var strokeFont = getTextFont(style, font.Typeface);
-            var text = transformText(style.Text, style, paint, font);
+            var strokePaint = SkiaCanvas.GetTextStrokePaint(style);
+            var strokeFont = GetTextFont(style, font.Typeface);
+            var text = SkiaCanvas.TransformText(style.Text, style, paint, font);
             var allLines = text.Split('\n');
 
-            //paint.Typeface = qualifyTypeface(text, paint.Typeface);
+            //paint.Typeface = QualifyTypeface(text, paint.Typeface);
 
             // detect collisions
             if (allLines.Length > 0)
             {
                 var biggestLine = allLines.OrderBy(line => line.Length).Last();
-                var width = (int)(font.MeasureText(biggestLine, paint));
+                var width = (int)font.MeasureText(biggestLine, paint);
                 int left = (int)(geometry.X - width / 2);
                 int top = (int)(geometry.Y - style.Paint.TextSize / 2 * allLines.Length);
                 int height = (int)(style.Paint.TextSize * allLines.Length);
@@ -523,7 +501,7 @@ namespace VectorTileRenderer
                     }
                 }
 
-                if (textCollides(rectangle))
+                if (TextCollides(rectangle))
                 {
                     // collision detected
                     return;
@@ -548,8 +526,13 @@ namespace VectorTileRenderer
             int i = 0;
             foreach (var line in allLines)
             {
-                float lineOffset = (float)(i * style.Paint.TextSize) - ((float)(allLines.Length) * (float)style.Paint.TextSize) / 2 + (float)style.Paint.TextSize;
-                var position = new SKPoint((float)geometry.X + (float)(style.Paint.TextOffset.X * style.Paint.TextSize), (float)geometry.Y + (float)(style.Paint.TextOffset.Y * style.Paint.TextSize) + lineOffset);
+                float lineOffset = (float)(i * style.Paint.TextSize)
+                    - allLines.Length
+                    * (float)style.Paint.TextSize
+                    / 2
+                    + (float)style.Paint.TextSize;
+                var position = new SKPoint((float)geometry.X + (float)(style.Paint.TextOffset.X * style.Paint.TextSize),
+                                           (float)geometry.Y + (float)(style.Paint.TextOffset.Y * style.Paint.TextSize) + lineOffset);
 
                 if (style.Paint.TextStrokeWidth != 0)
                 {
@@ -559,10 +542,9 @@ namespace VectorTileRenderer
                 canvas.DrawText(line, position, textAlign, font, paint);
                 i++;
             }
-
         }
 
-        double getPathLength(List<Point> path)
+        private static double GetPathLength(List<Point> path)
         {
             double distance = 0;
             for (var i = 0; i < path.Count - 2; i++)
@@ -573,12 +555,12 @@ namespace VectorTileRenderer
             return distance;
         }
 
-        double getAbsoluteDiff2Angles(double x, double y, double c = Math.PI)
+        private static double GetAbsoluteDiff2Angles(double x, double y, double c = Math.PI)
         {
             return c - Math.Abs((Math.Abs(x - y) % 2 * c) - c);
         }
 
-        bool checkPathSqueezing(List<Point> path, double textHeight)
+        private static bool CheckPathSqueezing(List<Point> path, double textHeight)
         {
             //double maxCurve = 0;
             double previousAngle = 0;
@@ -587,7 +569,7 @@ namespace VectorTileRenderer
                 var vector = path[i] - path[i + 1];
 
                 var angle = Math.Atan2(vector.Y, vector.X);
-                var angleDiff = Math.Abs(getAbsoluteDiff2Angles(angle, previousAngle));
+                var angleDiff = Math.Abs(GetAbsoluteDiff2Angles(angle, previousAngle));
 
                 //var length = vector.Length / textHeight;
                 //var curve = angleDiff / length;
@@ -609,7 +591,7 @@ namespace VectorTileRenderer
             //return maxCurve;
         }
 
-        void debugRectangle(Rect rectangle, Color color)
+        private void DebugRectangle(Rect rectangle, Color color)
         {
             var list = new List<Point>()
             {
@@ -619,11 +601,15 @@ namespace VectorTileRenderer
                 rectangle.BottomLeft,
             };
 
-            var brush = new Brush();
-            brush.Paint = new Paint();
-            brush.Paint.FillColor = color;
+            var brush = new Brush
+            {
+                Paint = new Paint
+                {
+                    FillColor = color
+                }
+            };
 
-            this.DrawPolygon(list, brush);
+            DrawPolygon(list, brush);
         }
 
         public void DrawTextOnPath(List<Point> geometry, Brush style)
@@ -635,21 +621,21 @@ namespace VectorTileRenderer
 
             //if (ClipOverflow)
             //{
-            geometry = clipLine(geometry);
+            geometry = ClipLine(geometry);
             if (geometry == null)
             {
                 return;
             }
             //}
 
-            var path = getPathFromGeometry(geometry);
-            var textPaint = getTextPaint(style);
-            var textFont = getTextFont(style);
-            qualifyTypeface(style, textFont);
-            var strokePaint = getTextStrokePaint(style);
-            var strokeFont = getTextFont(style, textFont.Typeface);
+            var path = SkiaCanvas.GetPathFromGeometry(geometry);
+            var textPaint = SkiaCanvas.GetTextPaint(style);
+            var textFont = GetTextFont(style);
+            SkiaCanvas.QualifyTypeface(style, textFont);
+            var strokePaint = SkiaCanvas.GetTextStrokePaint(style);
+            var strokeFont = GetTextFont(style, textFont.Typeface);
             var pathTextAlign = SKTextAlign.Left;
-            var text = transformTextSingleLine(style.Text, style);
+            var text = SkiaCanvas.TransformTextSingleLine(style.Text, style);
 
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -662,7 +648,7 @@ namespace VectorTileRenderer
                 return;
             }
 
-            var pathSqueezed = checkPathSqueezing(geometry, style.Paint.TextSize);
+            var pathSqueezed = SkiaCanvas.CheckPathSqueezing(geometry, style.Paint.TextSize);
 
             if (pathSqueezed)
             {
@@ -680,17 +666,17 @@ namespace VectorTileRenderer
 
             var rectangle = new Rect(left, top, right - left, bottom - top);
 
-            if (textCollides(rectangle))
+            if (TextCollides(rectangle))
             {
-                //debugRectangle(rectangle, Color.FromArgb(128, 100, 255, 100));
+                //DebugRectangle(rectangle, Color.FromArgb(128, 100, 255, 100));
                 // collides with other
                 return;
             }
             textRectangles.Add(rectangle);
 
-            //debugRectangle(rectangle, Color.FromArgb(150, 255, 0, 0));
+            //DebugRectangle(rectangle, Color.FromArgb(150, 255, 0, 0));
 
-            if (style.Text.Length * style.Paint.TextSize * 0.2 >= getPathLength(geometry))
+            if (style.Text.Length * style.Paint.TextSize * 0.2 >= GetPathLength(geometry))
             {
                 // exceeds estimated path length
                 return;
@@ -708,8 +694,8 @@ namespace VectorTileRenderer
             canvas.DrawTextOnPath(text, path, horizontalOffset, verticalOffset, pathTextAlign, textFont, textPaint);
 
 
-            //canvas.DrawText(Encoding.UTF32.GetBytes(bending.ToString("F")), new SKPoint((float)left + 10, (float)top + 10), getTextStrokePaint(style));
-            //canvas.DrawText(Encoding.UTF32.GetBytes(bending.ToString("F")), new SKPoint((float)left + 10, (float)top + 10), getTextPaint(style));
+            //canvas.DrawText(Encoding.UTF32.GetBytes(bending.ToString("F")), new SKPoint((float)left + 10, (float)top + 10), GetTextStrokePaint(style));
+            //canvas.DrawText(Encoding.UTF32.GetBytes(bending.ToString("F")), new SKPoint((float)left + 10, (float)top + 10), GetTextPaint(style));
         }
 
         public void DrawPoint(Point geometry, Brush style)
@@ -722,10 +708,10 @@ namespace VectorTileRenderer
 
         public void DrawPolygon(List<Point> geometry, Brush style)
         {
-            List<List<Point>> allGeometries = null;
+            List<List<Point>> allGeometries;
             if (ClipOverflow)
             {
-                allGeometries = clipPolygon(geometry);
+                allGeometries = ClipPolygon(geometry);
             }
             else
             {
@@ -739,25 +725,23 @@ namespace VectorTileRenderer
 
             foreach (var geometryPart in allGeometries)
             {
-                var path = getPathFromGeometry(geometryPart);
+                var path = GetPathFromGeometry(geometryPart);
                 if (path == null)
                 {
                     return;
                 }
 
-                SKPaint fillPaint = new SKPaint
+                SKPaint fillPaint = new()
                 {
                     Style = SKPaintStyle.Fill,
-                    StrokeCap = convertCap(style.Paint.LineCap),
-                    Color = new SKColor(style.Paint.FillColor.R, style.Paint.FillColor.G, style.Paint.FillColor.B, (byte)clamp(style.Paint.FillColor.A * style.Paint.FillOpacity, 0, 255)),
+                    StrokeCap = ConvertCap(style.Paint.LineCap),
+                    Color = new SKColor(style.Paint.FillColor.R, style.Paint.FillColor.G, style.Paint.FillColor.B, (byte)Clamp(style.Paint.FillColor.A * style.Paint.FillOpacity, 0, 255)),
                     IsAntialias = true,
                 };
 
                 canvas.DrawPath(path, fillPaint);
             }
-
         }
-
 
         public void DrawImage(Stream imageStream, Brush style)
         {
@@ -805,9 +789,6 @@ namespace VectorTileRenderer
             OnBeforeFinishDrawing();
 
             return bitmap;
-
         }
     }
 }
-
-

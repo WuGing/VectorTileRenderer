@@ -3,14 +3,9 @@ using System.Threading.Tasks;
 
 namespace VectorTileRenderer.Sources
 {
-    public class RasterTileSource : ITileSource
+    public class RasterTileSource(string path) : ITileSource
     {
-        public string Path { get; private set; }
-
-        public RasterTileSource(string path)
-        {
-            Path = path;
-        }
+        public string Path { get; private set; } = path;
 
         public Task<Stream> GetTile(int x, int y, int zoom)
         {

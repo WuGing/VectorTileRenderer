@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,10 +20,22 @@ namespace VectorTileRenderer
         {
             var code = OutCode.Inside;
 
-            if (x < r.Left) code |= OutCode.Left;
-            if (x > r.Right) code |= OutCode.Right;
-            if (y < r.Top) code |= OutCode.Top;
-            if (y > r.Bottom) code |= OutCode.Bottom;
+            if (x < r.Left) 
+            {
+                code |= OutCode.Left;
+            }
+            if (x > r.Right)
+            {
+                code |= OutCode.Right;
+            }
+            if (y < r.Top)
+            {
+                code |= OutCode.Top;
+            }
+            if (y > r.Bottom)
+            {
+                code |= OutCode.Bottom;
+            }
 
             return code;
         }
@@ -32,8 +44,8 @@ namespace VectorTileRenderer
 
         private static Point CalculateIntersection(Rect r, Point p1, Point p2, OutCode clipTo)
         {
-            var dx = (p2.X - p1.X);
-            var dy = (p2.Y - p1.Y);
+            var dx = p2.X - p1.X;
+            var dy = p2.Y - p1.Y;
 
             var slopeY = dx / dy; // slope to use for possibly-vertical lines
             var slopeX = dy / dx; // slope to use for possibly-horizontal lines
@@ -77,9 +89,10 @@ namespace VectorTileRenderer
             var accept = false;
 
             while (true)
-            { // should only iterate twice, at most
-              // Case 1:
-              // both endpoints are within the clipping region
+            {   
+                // should only iterate twice, at most
+                // Case 1:
+                // both endpoints are within the clipping region
                 if ((outCodeP1 | outCodeP2) == OutCode.Inside)
                 {
                     accept = true;
@@ -124,7 +137,7 @@ namespace VectorTileRenderer
             return null;
         }
 
-        static Rect getLineRect(List<Point> polyLine)
+        static Rect GetLineRect(List<Point> polyLine)
         {
             double minX = double.MaxValue;
             double minY = double.MaxValue;
@@ -157,9 +170,9 @@ namespace VectorTileRenderer
 
         public static List<Point> ClipPolyline(List<Point> polyLine, Rect bounds)
         {
-            var lineRect = getLineRect(polyLine);
+            var lineRect = GetLineRect(polyLine);
 
-            if(!bounds.IntersectsWith(lineRect))
+            if (!bounds.IntersectsWith(lineRect))
             {
                 return null;
             }
@@ -173,13 +186,11 @@ namespace VectorTileRenderer
 
                 var newSegment = ClipSegment(bounds, p1, p2);
 
-                if(newSegment != null)
+                if (newSegment != null)
                 {
                     if(newLine == null)
                     {
-                        newLine = new List<Point>();
-                        newLine.Add(newSegment.Item1);
-                        newLine.Add(newSegment.Item2);
+                        newLine = [newSegment.Item1, newSegment.Item2];
                     }
                     else
                     {
@@ -192,16 +203,14 @@ namespace VectorTileRenderer
                             newLine.Add(newSegment.Item2);
                         }
                     }
-                } else
+                } 
+                else
                 {
 
                 }
             }
 
             return newLine;
-
         }
-
-
     }
 }
