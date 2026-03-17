@@ -1,0 +1,147 @@
+name: NuGet Pack and Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to NuGet.org"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.meta.outputs.package_version }}
+      package_id: ${{ steps.meta.outputs.package_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+
+      - name: Restore
+        run: dotnet restore VectorTileRenderer/VectorTileRenderer.csproj
+
+      - name: Build
+        run: dotnet build VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-restore
+
+      - name: Read package metadata
+        id: meta
+        shell: pwsh
+        run: |
+          [xml]$xml = Get-Content "VectorTileRenderer/VectorTileRenderer.csproj"
+          $props = $xml.Project.PropertyGroup
+          $version = ($props | Where-Object { $_.Version } | Select-Object -First 1).Version
+          $packageId = ($props | Where-Object { $_.PackageId } | Select-Object -First 1).PackageId
+          "package_version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "package_id=$packageId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            LAST_TAG=$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)
+          else
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          fi
+          {
+            echo "## Changes"
+            echo
+            if [ -n "$LAST_TAG" ]; then
+              echo "Comparing against $LAST_TAG"
+              echo
+              git log "$LAST_TAG..HEAD" --pretty=format:"- %s (%h)" -n 100
+            else
+              echo "Initial release notes generated from recent commits"
+              echo
+              git log --pretty=format:"- %s (%h)" -n 100
+            fi
+          } > release-notes.md
+
+      - name: Pack
+        run: dotnet pack VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-build -o artifacts
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+
+      - name: Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Push NuGet package
+        shell: bash
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source "https://api.nuget.org/v3/index.json" \
+            --api-key "${NUGET_API_KEY}" \
+            --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Push symbol package
+        shell: bash
+        run: |
+          shopt -s nullglob
+          SYMBOLS=(artifacts/*.snupkg)
+          if [ ${#SYMBOLS[@]} -gt 0 ]; then
+            dotnet nuget push "artifacts/*.snupkg" \
+              --source "https://api.nuget.org/v3/index.json" \
+              --api-key "${NUGET_API_KEY}" \
+              --skip-duplicate
+          fi
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Create GitHub Release (tag only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg

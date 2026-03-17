@@ -3,7 +3,7 @@
     <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>VectorTileRenderer</RootNamespace>
     <AssemblyName>VectorTileRenderer</AssemblyName>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>disable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
@@ -14,15 +14,23 @@
     <Authors>VectorTileRenderer Contributors</Authors>
     <Company>VectorTileRenderer Contributors</Company>
     <Description>Vector map tile renderer for .NET with style-based rendering for MBTiles and PBF sources.</Description>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReleaseNotes>0.1.0-preview.1&#10;- Fork baseline from upstream project&#10;- Added runtime backend selection (CPU/GPU/Auto) via CanvasFactory&#10;- Added renderer profiling metrics and Mapsui performance overlay&#10;- Applied tile fetch/decode and style evaluation performance improvements&#10;- Added NuGet packaging metadata, SourceLink, and symbol package output (.snupkg)</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.NUGET.md</PackageReadmeFile>
     <PackageTags>maps;vector-tiles;mbtiles;openmaptiles;mapbox;skia</PackageTags>
+    <RepositoryUrl>https://github.com/WuGing/VectorTileRenderer</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/WuGing/VectorTileRenderer</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Clipper2" Version="2.0.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     <PackageReference Include="mapbox-vector-tile" Version="5.3.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.2" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
@@ -34,7 +42,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
     <None Include="README.NUGET.md" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 </Project>
