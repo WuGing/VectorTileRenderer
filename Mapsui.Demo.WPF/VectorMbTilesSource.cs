@@ -1,15 +1,10 @@
 ﻿using BruTile;
 using BruTile.Predefined;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using VectorTileRenderer;
 
 namespace Mapsui.Demo.WPF
 {
-    class VectorMbTilesSource : BruTile.ITileSource
+    class VectorMbTilesSource : ITileSource, ILocalTileSource
     {
         VectorMbTilesProvider provider;
 
@@ -32,15 +27,9 @@ namespace Mapsui.Demo.WPF
             return schema;
         }
 
-        public byte[] GetTile(TileInfo tileInfo)
+        public Task<byte[]> GetTileAsync(TileInfo tileInfo)
         {
-            return provider.GetTile(tileInfo);
+            return provider.GetTileAsync(tileInfo);
         }
-
-        public ITileProvider Provider
-        {
-            get { return provider; }
-        }
-
     }
 }

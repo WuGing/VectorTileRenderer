@@ -153,7 +153,40 @@ The entire project including the demos, integrations, and optimization technique
 
 ## GPU powered vector map drawing
 
-Currently the rendering is done using SkiaSharp, which is sort of GPU powered. The eventual goal is to replace SkiaSharp with some hardware accelerated rendering system that offloads the major processing away from CPU. Possible candidates are OpenTK, SharpDX, SharpGL, and SkiaSharp with ANGLE. Therefore this project actively needs some contribution support from the community.
+Rendering is currently SkiaSharp-based, with CPU as the most reliable default path.
+
+The project now includes an experimental dual backend (`Cpu`, `Gpu`, `Auto`) so applications can choose runtime behavior. In practice, whether GPU is used depends on whether a valid GPU context can be created in the current host/thread environment.
+
+Important context:
+
+- In this project, tile fetch/decode/style evaluation is often the dominant cost, not just draw calls.
+- The current pipeline returns `SKBitmap` tiles, so GPU paths still perform a readback step before returning.
+- Because of those constraints, GPU mode is currently best treated as opportunistic rather than guaranteed faster.
+
+Candidate future directions for deeper hardware acceleration include SkiaSharp GPU context hosting (OpenGL/ANGLE) and render-to-surface pipelines that avoid per-tile bitmap readback.
+
+### CPU/GPU dual backend support
+
+The renderer now supports selecting CPU or GPU canvas at runtime:
+
+```C#
+// CPU only
+var cpuCanvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Cpu);
+
+// GPU preferred, falls back to CPU when no GPU context is available
+var gpuCanvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Gpu);
+
+// Auto: try GPU first, then CPU fallback
+var autoCanvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Auto);
+```
+
+Notes:
+
+- GPU mode uses a Skia GPU canvas and reads back to bitmap in `FinishDrawing`, so it is compatible with the existing bitmap output pipeline.
+- If a GPU context cannot be created on the current host/thread, rendering falls back to CPU automatically.
+- For offline tile generation and background workers, `Cpu` is generally the safest default.
+- `Auto` probes GPU availability and falls back to CPU when unavailable.
+- For production use today, benchmark your own workload and keep CPU as the baseline.
 
 ## Contribution
 

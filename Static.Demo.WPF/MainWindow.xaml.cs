@@ -1,20 +1,14 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using SkiaSharp;
 using VectorTileRenderer;
 
 namespace Demo.WPF
@@ -25,7 +19,7 @@ namespace Demo.WPF
     public partial class MainWindow : Window
     {
         GlobalMercator gmt = new GlobalMercator();
-        string mainDir = "../../../";
+        string mainDir = AppContext.BaseDirectory;
 
         public MainWindow()
         {
@@ -142,9 +136,9 @@ namespace Demo.WPF
             // render it on a skia canvas
             var canvas = new SkiaCanvas();
             var bitmapR = await Renderer.Render(style, canvas, 0, 0, 14, 256, 256, 1);
-            demoImage.Source = bitmapR;
+            demoImage.Source = ToBitmapSource(bitmapR);
 
-            scrollViewer.Background = new SolidColorBrush(style.GetBackgroundColor(14));
+            scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(14)));
 
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
@@ -166,9 +160,9 @@ namespace Demo.WPF
             // render it on a skia canvas
             var canvas = new SkiaCanvas();
             var bitmapR = await Renderer.Render(style, canvas, 0, 0, zoom, size, size, scale);
-            demoImage.Source = bitmapR;
+            demoImage.Source = ToBitmapSource(bitmapR);
 
-            scrollViewer.Background = new SolidColorBrush(style.GetBackgroundColor(zoom));
+            scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(zoom)));
 
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
@@ -202,7 +196,7 @@ namespace Demo.WPF
 
                     }
 
-                    bitmapSources[x - minX, maxY - y] = bitmapR;
+                    bitmapSources[x - minX, maxY - y] = ToBitmapSource(bitmapR);
                 });
             });
 
@@ -210,7 +204,7 @@ namespace Demo.WPF
             var bitmap = mergeBitmaps(bitmapSources);
             demoImage.Source = bitmap;
 
-            scrollViewer.Background = new SolidColorBrush(style.GetBackgroundColor(zoom));
+            scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(zoom)));
 
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
@@ -226,7 +220,7 @@ namespace Demo.WPF
                 {
                     for (int y = 0; y < bitmapSources.GetLength(1); y++)
                     {
-                        drawingContext.DrawImage(bitmapSources[x, y], new Rect(x * bitmapSources[x, y].Width, y * bitmapSources[x, y].Height, bitmapSources[x, y].Width, bitmapSources[x, y].Height));
+                        drawingContext.DrawImage(bitmapSources[x, y], new System.Windows.Rect(x * bitmapSources[x, y].Width, y * bitmapSources[x, y].Height, bitmapSources[x, y].Width, bitmapSources[x, y].Height));
                     }
                 }
             }
@@ -236,6 +230,32 @@ namespace Demo.WPF
             bmp.Freeze();
 
             return bmp;
+        }
+
+        static System.Windows.Media.Color ToMediaColor(VectorTileRenderer.Color color)
+        {
+            return System.Windows.Media.Color.FromArgb(color.A, color.R, color.G, color.B);
+        }
+
+        static BitmapSource ToBitmapSource(SKBitmap bitmap)
+        {
+            if (bitmap == null)
+            {
+                return null;
+            }
+
+            using (var image = SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+            using (var stream = new MemoryStream(data.ToArray()))
+            {
+                var result = new BitmapImage();
+                result.BeginInit();
+                result.CacheOption = BitmapCacheOption.OnLoad;
+                result.StreamSource = stream;
+                result.EndInit();
+                result.Freeze();
+                return result;
+            }
         }
 
         private void demoImage_PreviewMouseDown(object sender, MouseButtonEventArgs e)

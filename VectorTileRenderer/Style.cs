@@ -1,11 +1,10 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Windows;
-using System.Windows.Media;
+using System.Text;
+using System.Text.Json;
+using SkiaSharp;
 
 namespace VectorTileRenderer
 {
@@ -50,7 +49,7 @@ namespace VectorTileRenderer
         public double LineWidth { get; set; } = 1;
         public double LineOffset { get; set; } = 0;
         public double LineBlur { get; set; } = 0;
-        public double[] LineDashArray { get; set; } = new double[0];
+        public double[] LineDashArray { get; set; } = [];
         public double LineOpacity { get; set; } = 1;
 
         public SymbolPlacement SymbolPlacement { get; set; } = SymbolPlacement.Point;
@@ -61,7 +60,7 @@ namespace VectorTileRenderer
         public double IconOpacity { get; set; } = 1;
 
         public Color TextColor { get; set; }
-        public string[] TextFont { get; set; } = new string[] { "Open Sans Regular", "Arial Unicode MS Regular" };
+        public string[] TextFont { get; set; } = ["Open Sans Regular", "Arial Unicode MS Regular"];
         public double TextSize { get; set; } = 16;
         public double TextMaxWidth { get; set; } = 10;
         public TextAlignment TextJustify { get; set; } = TextAlignment.Center;
@@ -76,26 +75,6 @@ namespace VectorTileRenderer
 
         public bool Visibility { get; set; } = true; // visibility
     }
-
-    //class ComparableColor:IComparable
-    //{
-    //    private long numericColor;
-
-    //    public ComparableColor(string encodedColor)
-    //    {
-
-    //    }
-
-    //    public int CompareTo(object obj)
-    //    {
-    //        if(obj.GetType() != typeof(ComparableColor))
-    //        {
-    //            return -1;
-    //        }
-
-    //        return numericColor.CompareTo((ComparableColor)obj);
-    //    }
-    //}
 
     public class Layer
     {
@@ -132,110 +111,124 @@ namespace VectorTileRenderer
         //double emToPx = 16;
 
         ConcurrentDictionary<string, Brush[]> brushesCache = new ConcurrentDictionary<string, Brush[]>();
+        private readonly ConcurrentDictionary<string, Color> colorCache = new ConcurrentDictionary<string, Color>();
+        private readonly Dictionary<int, bool> layerFeatureDependencyCache = new Dictionary<int, bool>();
 
         public string FontDirectory { get; set; } = null;
 
-        public Style(string path, double scale = 1)
+        public Style(string path)
         {
             var json = System.IO.File.ReadAllText(path);
-            dynamic jObject = JObject.Parse(json);
-
-            if (jObject["metadata"] != null)
+            var jObject = JsonDocument.Parse(json, new JsonDocumentOptions
             {
-                Metadata = jObject.metadata.ToObject<Dictionary<string, object>>();
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip
+            }).RootElement;
+
+            if (jObject.TryGetProperty("metadata", out var metadataElement))
+            {
+                Metadata = plainifyJson(metadataElement) as Dictionary<string, object>;
             }
 
-            List<string> fontNames = new List<string>();
-
-            foreach (JProperty jSource in jObject.sources)
+            if (jObject.TryGetProperty("sources", out var sourcesElement))
             {
-                var source = new Source();
-
-                IDictionary<string, JToken> sourceDict = jSource.Value as JObject;
-
-                source.Name = jSource.Name;
-
-                if (sourceDict.ContainsKey("url"))
+                foreach (var jSource in sourcesElement.EnumerateObject())
                 {
-                    source.URL = plainifyJson(sourceDict["url"]) as string;
-                }
+                    var source = new Source();
 
-                if (sourceDict.ContainsKey("type"))
-                {
-                    source.Type = plainifyJson(sourceDict["type"]) as string;
-                }
+                    var sourceDict = plainifyJson(jSource.Value) as Dictionary<string, object>;
 
-                if (sourceDict.ContainsKey("minzoom"))
-                {
-                    source.MinZoom = Convert.ToDouble(plainifyJson(sourceDict["minzoom"]));
-                }
+                    source.Name = jSource.Name;
 
-                if (sourceDict.ContainsKey("maxzoom"))
-                {
-                    source.MaxZoom = Convert.ToDouble(plainifyJson(sourceDict["maxzoom"]));
-                }
+                    if (sourceDict.ContainsKey("url"))
+                    {
+                        source.URL = sourceDict["url"] as string;
+                    }
 
-                Sources[jSource.Name] = source;
+                    if (sourceDict.ContainsKey("type"))
+                    {
+                        source.Type = sourceDict["type"] as string;
+                    }
+
+                    if (sourceDict.ContainsKey("minzoom"))
+                    {
+                        source.MinZoom = Convert.ToDouble(sourceDict["minzoom"]);
+                    }
+
+                    if (sourceDict.ContainsKey("maxzoom"))
+                    {
+                        source.MaxZoom = Convert.ToDouble(sourceDict["maxzoom"]);
+                    }
+
+                    Sources[jSource.Name] = source;
+                }
             }
 
             int i = 0;
-            foreach (var jLayer in jObject.layers)
+            if (jObject.TryGetProperty("layers", out var layersElement))
             {
-                var layer = new Layer();
-                layer.Index = i;
-
-                IDictionary<string, JToken> layerDict = jLayer;
-
-                if (layerDict.ContainsKey("minzoom"))
+                foreach (var jLayer in layersElement.EnumerateArray())
                 {
-                    layer.MinZoom = Convert.ToDouble(plainifyJson(layerDict["minzoom"]));
+                    var layer = new Layer
+                    {
+                        Index = i
+                    };
+
+                    var layerDict = plainifyJson(jLayer) as Dictionary<string, object>;
+
+                    if (layerDict.ContainsKey("minzoom"))
+                    {
+                        layer.MinZoom = Convert.ToDouble(layerDict["minzoom"]);
+                    }
+
+                    if (layerDict.ContainsKey("maxzoom"))
+                    {
+                        layer.MaxZoom = Convert.ToDouble(layerDict["maxzoom"]);
+                    }
+
+                    if (layerDict.ContainsKey("id"))
+                    {
+                        layer.ID = layerDict["id"] as string;
+                    }
+
+                    if (layerDict.ContainsKey("type"))
+                    {
+                        layer.Type = layerDict["type"] as string;
+                    }
+
+                    if (layerDict.ContainsKey("source"))
+                    {
+                        layer.SourceName = layerDict["source"] as string;
+                        if (Sources.ContainsKey(layer.SourceName))
+                        {
+                            layer.Source = Sources[layer.SourceName];
+                        }
+                    }
+
+                    if (layerDict.ContainsKey("source-layer"))
+                    {
+                        layer.SourceLayer = layerDict["source-layer"] as string;
+                    }
+
+                    if (layerDict.ContainsKey("paint"))
+                    {
+                        layer.Paint = layerDict["paint"] as Dictionary<string, object>;
+                    }
+
+                    if (layerDict.ContainsKey("layout"))
+                    {
+                        layer.Layout = layerDict["layout"] as Dictionary<string, object>;
+                    }
+
+                    if (layerDict.ContainsKey("filter"))
+                    {
+                        layer.Filter = layerDict["filter"] as object[];
+                    }
+
+                    Layers.Add(layer);
+
+                    i++;
                 }
-
-                if (layerDict.ContainsKey("maxzoom"))
-                {
-                    layer.MaxZoom = Convert.ToDouble(plainifyJson(layerDict["maxzoom"]));
-                }
-
-                if (layerDict.ContainsKey("id"))
-                {
-                    layer.ID = plainifyJson(layerDict["id"]) as string;
-                }
-
-                if (layerDict.ContainsKey("type"))
-                {
-                    layer.Type = plainifyJson(layerDict["type"]) as string;
-                }
-
-                if (layerDict.ContainsKey("source"))
-                {
-                    layer.SourceName = plainifyJson(layerDict["source"]) as string;
-                    layer.Source = Sources[layer.SourceName];
-                }
-
-                if (layerDict.ContainsKey("source-layer"))
-                {
-                    layer.SourceLayer = plainifyJson(layerDict["source-layer"]) as string;
-                }
-
-                if (layerDict.ContainsKey("paint"))
-                {
-                    layer.Paint = plainifyJson(layerDict["paint"]) as Dictionary<string, object>;
-                }
-
-                if (layerDict.ContainsKey("layout"))
-                {
-                    layer.Layout = plainifyJson(layerDict["layout"]) as Dictionary<string, object>;
-                }
-
-                if (layerDict.ContainsKey("filter"))
-                {
-                    var filterArray = layerDict["filter"] as JArray;
-                    layer.Filter = plainifyJson(filterArray) as object[];
-                }
-
-                Layers.Add(layer);
-
-                i++;
             }
 
             Hash = Utils.Sha256(json);
@@ -261,22 +254,41 @@ namespace VectorTileRenderer
             Sources[name].Provider = provider;
         }
 
-        object plainifyJson(JToken token)
+        object plainifyJson(JsonElement token)
         {
-            if (token.Type == JTokenType.Object)
+            if (token.ValueKind == JsonValueKind.Object)
             {
-                IDictionary<string, JToken> dict = token as JObject;
-                return dict.Select(pair => new KeyValuePair<string, object>(pair.Key, plainifyJson(pair.Value)))
-                        .ToDictionary(key => key.Key, value => value.Value);
+                var dict = new Dictionary<string, object>();
+                foreach (var pair in token.EnumerateObject())
+                {
+                    dict[pair.Name] = plainifyJson(pair.Value);
+                }
+                return dict;
             }
-            else if (token.Type == JTokenType.Array)
+            else if (token.ValueKind == JsonValueKind.Array)
             {
-                var array = token as JArray;
-                return array.Select(item => plainifyJson(item)).ToArray();
+                return token.EnumerateArray().Select(item => plainifyJson(item)).ToArray();
             }
-            else
+
+            if (token.ValueKind == JsonValueKind.String)
             {
-                return token.ToObject<object>();
+                return token.GetString();
+            }
+
+            if (token.ValueKind == JsonValueKind.Number)
+            {
+                long int64Value;
+                if (token.TryGetInt64(out int64Value))
+                {
+                    return int64Value;
+                }
+
+                return token.GetDouble();
+            }
+
+            if (token.ValueKind == JsonValueKind.True || token.ValueKind == JsonValueKind.False)
+            {
+                return token.GetBoolean();
             }
 
             return null;
@@ -314,7 +326,73 @@ namespace VectorTileRenderer
                 return newColor;
             }
 
-            return Colors.White;
+            return Color.White;
+        }
+
+        public bool NeedsFeatureAttributes(Layer layer)
+        {
+            if (layerFeatureDependencyCache.TryGetValue(layer.Index, out var cachedResult))
+            {
+                return cachedResult;
+            }
+
+            var needs = (layer.Filter != null && layer.Filter.Length > 0)
+                || tokenUsesFeatureAttributes(layer.Paint)
+                || tokenUsesFeatureAttributes(layer.Layout);
+
+            layerFeatureDependencyCache[layer.Index] = needs;
+            return needs;
+        }
+
+        private static bool tokenUsesFeatureAttributes(object token)
+        {
+            if (token == null)
+            {
+                return false;
+            }
+
+            if (token is string s)
+            {
+                if (s.IndexOf('{') >= 0 && s.IndexOf('}') > s.IndexOf('{'))
+                {
+                    return true;
+                }
+
+                if (s.Length > 1 && s[0] == '$' && s != "$zoom" && s != "$id")
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (token is object[] arrayToken)
+            {
+                for (int i = 0; i < arrayToken.Length; i++)
+                {
+                    if (tokenUsesFeatureAttributes(arrayToken[i]))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            if (token is Dictionary<string, object> dictToken)
+            {
+                foreach (var pair in dictToken)
+                {
+                    if (tokenUsesFeatureAttributes(pair.Value))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            return false;
         }
 
         //public Brush[] GetBrushesCached(double zoom, double scale, string type, string id, Dictionary<string, object> attributes)
@@ -380,10 +458,12 @@ namespace VectorTileRenderer
             var layoutData = layer.Layout;
             var index = layer.Index;
 
-            var brush = new Brush();
-            brush.ZIndex = index;
-            brush._layer = layer;
-            brush.GlyphsDirectory = this.FontDirectory;
+            var brush = new Brush
+            {
+                ZIndex = index,
+                _layer = layer,
+                GlyphsDirectory = FontDirectory
+            };
 
             var paint = new Paint();
             brush.Paint = paint;
@@ -475,7 +555,7 @@ namespace VectorTileRenderer
 
                 if (paintData.ContainsKey("line-dasharray"))
                 {
-                    var array = (getValue(paintData["line-dasharray"], attributes) as object[]);
+                    var array = getValue(paintData["line-dasharray"], attributes) as object[];
                     paint.LineDashArray = array.Select(item => Convert.ToDouble(item) * scale).ToArray();
                 }
 
@@ -534,18 +614,7 @@ namespace VectorTileRenderer
                 if (layoutData.ContainsKey("text-field"))
                 {
                     brush.TextField = (string)getValue(layoutData["text-field"], attributes);
-
-                    // TODO check performance implications of Regex.Replace
-                    brush.Text = Regex.Replace(brush.TextField, @"\{([A-Za-z0-9\-\:_]+)\}", (Match m) =>
-                    {
-                        var key = stripBraces(m.Value);
-                        if (attributes.ContainsKey(key))
-                        {
-                            return attributes[key].ToString();
-                        }
-
-                        return "";
-                    }).Trim();
+                    brush.Text = resolveTextField(brush.TextField, attributes).Trim();
                 }
 
                 if (layoutData.ContainsKey("text-font"))
@@ -571,7 +640,7 @@ namespace VectorTileRenderer
 
                 if (layoutData.ContainsKey("text-optional"))
                 {
-                    paint.TextOptional = (bool)(getValue(layoutData["text-optional"], attributes));
+                    paint.TextOptional = (bool)getValue(layoutData["text-optional"], attributes);
                 }
 
                 if (layoutData.ContainsKey("text-transform"))
@@ -600,34 +669,52 @@ namespace VectorTileRenderer
                 {
                     paint.IconImage = (string)getValue(layoutData["icon-image"], attributes);
                 }
-
-                //Console.WriteLine("layout");
-                //Console.WriteLine(layoutData.ToString());
             }
 
             return brush;
         }
 
-        private unsafe string stripBraces(string s)
+        private static string resolveTextField(string textField, Dictionary<string, object> attributes)
         {
-            int len = s.Length;
-            char* newChars = stackalloc char[len];
-            char* currentChar = newChars;
-
-            for (int i = 0; i < len; ++i)
+            if (string.IsNullOrEmpty(textField) || attributes == null || attributes.Count == 0)
             {
-                char c = s[i];
-                switch (c)
-                {
-                    case '{':
-                    case '}':
-                        continue;
-                    default:
-                        *currentChar++ = c;
-                        break;
-                }
+                return textField ?? "";
             }
-            return new string(newChars, 0, (int)(currentChar - newChars));
+
+            if (textField.IndexOf('{') < 0)
+            {
+                return textField;
+            }
+
+            var builder = new StringBuilder(textField.Length + 8);
+
+            for (int i = 0; i < textField.Length; i++)
+            {
+                var c = textField[i];
+
+                if (c != '{')
+                {
+                    builder.Append(c);
+                    continue;
+                }
+
+                var closeIndex = textField.IndexOf('}', i + 1);
+                if (closeIndex < 0)
+                {
+                    builder.Append(c);
+                    continue;
+                }
+
+                var key = textField.Substring(i + 1, closeIndex - i - 1);
+                if (attributes.TryGetValue(key, out var value) && value != null)
+                {
+                    builder.Append(value.ToString());
+                }
+
+                i = closeIndex;
+            }
+
+            return builder.ToString();
         }
 
         private Color parseColor(object iColor)
@@ -639,14 +726,32 @@ namespace VectorTileRenderer
 
             if (iColor.GetType() != typeof(string))
             {
-
+                throw new NotImplementedException("Not implemented color format");
             }
 
             var colorString = (string)iColor;
 
+            if (colorCache.TryGetValue(colorString, out var cachedColor))
+            {
+                return cachedColor;
+            }
+
+            var parsedColor = parseColorString(colorString);
+            colorCache[colorString] = parsedColor;
+            return parsedColor;
+        }
+
+        private Color parseColorString(string colorString)
+        {
+            if (string.IsNullOrEmpty(colorString))
+            {
+                return Color.FromRgb(0, 0, 0);
+            }
+
             if (colorString[0] == '#')
             {
-                return (Color)ColorConverter.ConvertFromString(colorString);
+                var parsedHex = SKColor.Parse(colorString);
+                return Color.FromArgb(parsedHex.Alpha, parsedHex.Red, parsedHex.Green, parsedHex.Blue);
             }
 
             if (colorString.StartsWith("hsl("))
@@ -656,14 +761,7 @@ namespace VectorTileRenderer
                 double s = double.Parse(segments[2]);
                 double l = double.Parse(segments[3]);
 
-                var color = (new ColorMine.ColorSpaces.Hsl()
-                {
-                    H = h,
-                    S = s,
-                    L = l,
-                }).ToRgb();
-
-                return Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
+                return hslToColor(h, s, l);
             }
 
             if (colorString.StartsWith("hsla("))
@@ -674,14 +772,8 @@ namespace VectorTileRenderer
                 double l = double.Parse(segments[3]);
                 double a = double.Parse(segments[4]) * 255;
 
-                var color = (new ColorMine.ColorSpaces.Hsl()
-                {
-                    H = h,
-                    S = s,
-                    L = l,
-                }).ToRgb();
-
-                return Color.FromArgb((byte)(a), (byte)color.R, (byte)color.G, (byte)color.B);
+                var color = hslToColor(h, s, l);
+                return Color.FromArgb((byte)a, color.R, color.G, color.B);
             }
 
             if (colorString.StartsWith("rgba("))
@@ -707,13 +799,70 @@ namespace VectorTileRenderer
 
             try
             {
-                return (Color)ColorConverter.ConvertFromString(colorString);
+                var parsed = SKColor.Parse(colorString);
+                return Color.FromArgb(parsed.Alpha, parsed.Red, parsed.Green, parsed.Blue);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new NotImplementedException("Not implemented color format: " + colorString);
             }
-            //return Colors.Violet;
+        }
+
+        private static Color hslToColor(double h, double sPercent, double lPercent)
+        {
+            // CSS-style hsl() inputs use percentages for saturation and lightness.
+            var s = Math.Max(0, Math.Min(100, sPercent)) / 100.0;
+            var l = Math.Max(0, Math.Min(100, lPercent)) / 100.0;
+            var normalizedHue = h % 360.0;
+            if (normalizedHue < 0)
+            {
+                normalizedHue += 360.0;
+            }
+
+            var c = (1.0 - Math.Abs(2.0 * l - 1.0)) * s;
+            var x = c * (1.0 - Math.Abs(normalizedHue / 60.0 % 2.0 - 1.0));
+            var m = l - c / 2.0;
+
+            double rPrime = 0;
+            double gPrime = 0;
+            double bPrime = 0;
+
+            if (normalizedHue < 60)
+            {
+                rPrime = c;
+                gPrime = x;
+            }
+            else if (normalizedHue < 120)
+            {
+                rPrime = x;
+                gPrime = c;
+            }
+            else if (normalizedHue < 180)
+            {
+                gPrime = c;
+                bPrime = x;
+            }
+            else if (normalizedHue < 240)
+            {
+                gPrime = x;
+                bPrime = c;
+            }
+            else if (normalizedHue < 300)
+            {
+                rPrime = x;
+                bPrime = c;
+            }
+            else
+            {
+                rPrime = c;
+                bPrime = x;
+            }
+
+            byte r = (byte)Math.Round((rPrime + m) * 255.0);
+            byte g = (byte)Math.Round((gPrime + m) * 255.0);
+            byte b = (byte)Math.Round((bPrime + m) * 255.0);
+
+            return Color.FromRgb(r, g, b);
         }
 
         public bool ValidateLayer(Layer layer, double zoom, Dictionary<string, object> attributes)
@@ -734,7 +883,7 @@ namespace VectorTileRenderer
                 }
             }
 
-            if (attributes != null && layer.Filter.Count() > 0)
+            if (attributes != null && layer.Filter.Length > 0)
             {
                 // TODO make this more performant
                 if (!validateUsingFilter(layer.Filter, attributes))
@@ -748,7 +897,6 @@ namespace VectorTileRenderer
 
         private Layer[] findLayers(double zoom, string layerName, Dictionary<string, object> attributes)
         {
-            ////Console.WriteLine(layerName);
             List<Layer> result = new List<Layer>();
 
             foreach (var layer in Layers)
@@ -802,16 +950,22 @@ namespace VectorTileRenderer
 
         private bool validateUsingFilter(object[] filterArray, Dictionary<string, object> attributes)
         {
-            if (filterArray.Count() == 0)
+            if (filterArray.Length == 0)
             {
+                return true;
             }
             var operation = filterArray[0] as string;
             bool result;
 
             if (operation == "all")
             {
-                foreach (object[] subFilter in filterArray.Skip(1))
+                for (int i = 1; i < filterArray.Length; i++)
                 {
+                    var subFilter = filterArray[i] as object[];
+                    if (subFilter == null)
+                    {
+                        continue;
+                    }
                     if (!validateUsingFilter(subFilter, attributes))
                     {
                         return false;
@@ -821,8 +975,13 @@ namespace VectorTileRenderer
             }
             else if (operation == "any")
             {
-                foreach (object[] subFilter in filterArray.Skip(1))
+                for (int i = 1; i < filterArray.Length; i++)
                 {
+                    var subFilter = filterArray[i] as object[];
+                    if (subFilter == null)
+                    {
+                        continue;
+                    }
                     if (validateUsingFilter(subFilter, attributes))
                     {
                         return true;
@@ -833,8 +992,13 @@ namespace VectorTileRenderer
             else if (operation == "none")
             {
                 result = false;
-                foreach (object[] subFilter in filterArray.Skip(1))
+                for (int i = 1; i < filterArray.Length; i++)
                 {
+                    var subFilter = filterArray[i] as object[];
+                    if (subFilter == null)
+                    {
+                        continue;
+                    }
                     if (validateUsingFilter(subFilter, attributes))
                     {
                         result = true;
@@ -853,30 +1017,17 @@ namespace VectorTileRenderer
                 case "<=":
 
                     var key = (string)filterArray[1];
-
-                    if (operation == "==")
+                    if (!attributes.TryGetValue(key, out var attributeValue))
                     {
-                        if (!attributes.ContainsKey(key))
-                        {
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        // special case, comparing inequality with non existent attribute
-                        if (!attributes.ContainsKey(key))
-                        {
-                            return true;
-                        }
+                        return operation != "==";
                     }
 
-                    if (!(attributes[key] is IComparable))
+                    if (!(attributeValue is IComparable))
                     {
                         throw new NotImplementedException("Comparing colors probably");
-                        return false;
                     }
 
-                    var valueA = (IComparable)attributes[key];
+                    var valueA = (IComparable)attributeValue;
                     var valueB = getValue(filterArray[2], attributes);
 
                     if (isNumber(valueA) && isNumber(valueB))
@@ -941,15 +1092,14 @@ namespace VectorTileRenderer
             if (operation == "in")
             {
                 var key = filterArray[1] as string;
-                if (!attributes.ContainsKey(key))
+                if (!attributes.TryGetValue(key, out var value))
                 {
                     return false;
                 }
 
-                var value = attributes[key];
-
-                foreach (object item in filterArray.Skip(2))
+                for (int i = 2; i < filterArray.Length; i++)
                 {
+                    var item = filterArray[i];
                     if (getValue(item, attributes).Equals(value))
                     {
                         return true;
@@ -960,15 +1110,14 @@ namespace VectorTileRenderer
             else if (operation == "!in")
             {
                 var key = filterArray[1] as string;
-                if (!attributes.ContainsKey(key))
+                if (!attributes.TryGetValue(key, out var value))
                 {
                     return true;
                 }
 
-                var value = attributes[key];
-
-                foreach (object item in filterArray.Skip(2))
+                for (int i = 2; i < filterArray.Length; i++)
                 {
+                    var item = filterArray[i];
                     if (getValue(item, attributes).Equals(value))
                     {
                         return false;

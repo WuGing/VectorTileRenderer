@@ -1,0 +1,63 @@
+name: CI Validate
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  pack-library:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+
+      - name: Restore library
+        run: dotnet restore VectorTileRenderer/VectorTileRenderer.csproj
+
+      - name: Build library
+        run: dotnet build VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-restore
+
+      - name: Pack library (validation only)
+        run: dotnet pack VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-build -o artifacts
+
+      - name: Upload validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-pack-artifacts
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+
+  build-solution-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+
+      - name: Restore solution
+        run: dotnet restore VectorTileRenderer.sln
+
+      - name: Build solution
+        run: dotnet build VectorTileRenderer.sln -c Release --no-restore

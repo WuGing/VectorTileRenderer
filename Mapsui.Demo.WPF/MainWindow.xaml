@@ -23,5 +23,9 @@
             </ComboBox>
         </Grid>
 
+        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Background="#AA111111" CornerRadius="6" Padding="10,6" IsHitTestVisible="False">
+            <TextBlock Name="perfOverlayText" Foreground="#FFF5F5F5" FontSize="12" Text="Profiler: waiting for tile samples..." />
+        </Border>
+
     </Grid>
 </Window>
