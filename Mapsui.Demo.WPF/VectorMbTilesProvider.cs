@@ -5,14 +5,14 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using VectorTileRenderer;
+using WuGing.VectorTileRenderer;
 
 namespace Mapsui.Demo.WPF
 {
     class VectorMbTilesProvider
     {
         Style style;
-        VectorTileRenderer.Sources.MbTilesSource provider;
+        WuGing.VectorTileRenderer.Sources.MbTilesSource provider;
         string cachePath;
 
         private static readonly object profileLock = new object();
@@ -53,7 +53,7 @@ namespace Mapsui.Demo.WPF
                 FontDirectory = @"styles/fonts/"
             };
 
-            provider = new VectorTileRenderer.Sources.MbTilesSource(path);
+            provider = new WuGing.VectorTileRenderer.Sources.MbTilesSource(path);
             style.SetSourceProvider("openmaptiles", provider);
         }
 

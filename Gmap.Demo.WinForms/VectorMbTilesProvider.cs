@@ -4,14 +4,14 @@ using GMap.NET.Projections;
 using System;
 using System.IO;
 using SkiaSharp;
-using VectorTileRenderer;
+using WuGing.VectorTileRenderer;
 
 namespace Gmap.Demo.WinForms
 {
     class VectorMbTilesProvider : GMapProvider
     {
         Style style;
-        VectorTileRenderer.Sources.MbTilesSource provider;
+        WuGing.VectorTileRenderer.Sources.MbTilesSource provider;
         string cachePath;
 
         public VectorMbTilesProvider(string path, string stylePath, string cachePath)
@@ -23,7 +23,7 @@ namespace Gmap.Demo.WinForms
             };
             this.cachePath = cachePath;
 
-            provider = new VectorTileRenderer.Sources.MbTilesSource(path);
+            provider = new WuGing.VectorTileRenderer.Sources.MbTilesSource(path);
             style.SetSourceProvider(0, provider);
 
             BypassCache = true;

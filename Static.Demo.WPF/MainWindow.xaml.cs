@@ -9,7 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SkiaSharp;
-using VectorTileRenderer;
+using WuGing.VectorTileRenderer;
 
 namespace Demo.WPF
 {
@@ -28,11 +28,11 @@ namespace Demo.WPF
             // first, we extract necessary pbf tiles from mbtiles db
 
             var coords = gmt.LatLonToTile(47.371143, 8.543924, 14);
-            var tileSource = new VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/zurich.mbtiles");
+            var tileSource = new WuGing.VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/zurich.mbtiles");
             tileSource.ExtractTile(coords.X, coords.Y, 14, mainDir + @"tiles/zurich.pbf.gz");
 
             coords = gmt.LatLonToTile(33.693189, 73.061415, 11);
-            tileSource = new VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/islamabad.mbtiles");
+            tileSource = new WuGing.VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/islamabad.mbtiles");
             tileSource.ExtractTile(coords.X, coords.Y, 11, mainDir + @"tiles/islamabad.pbf.gz");
         }
 
@@ -122,15 +122,15 @@ namespace Demo.WPF
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             // load style and font
-            var style = new VectorTileRenderer.Style(mainDir + @"styles/hybrid-style.json");
+            var style = new WuGing.VectorTileRenderer.Style(mainDir + @"styles/hybrid-style.json");
             style.FontDirectory = mainDir + @"styles/fonts/";
 
             // set pbf as tile provider
-            var vectorProvider = new VectorTileRenderer.Sources.PbfTileSource(mainDir + @"tiles/zurich.pbf.gz");
+            var vectorProvider = new WuGing.VectorTileRenderer.Sources.PbfTileSource(mainDir + @"tiles/zurich.pbf.gz");
             style.SetSourceProvider(0, vectorProvider);
 
             // load raster source
-            var rasterProvider = new VectorTileRenderer.Sources.RasterTileSource(mainDir + @"tiles/zurich.jpg");
+            var rasterProvider = new WuGing.VectorTileRenderer.Sources.RasterTileSource(mainDir + @"tiles/zurich.jpg");
             style.SetSourceProvider("satellite", rasterProvider);
 
             // render it on a skia canvas
@@ -150,11 +150,11 @@ namespace Demo.WPF
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             // load style and font
-            var style = new VectorTileRenderer.Style(stylePath);
+            var style = new WuGing.VectorTileRenderer.Style(stylePath);
             style.FontDirectory = mainDir + @"styles/fonts/";
 
             // set pbf as tile provider
-            var provider = new VectorTileRenderer.Sources.PbfTileSource(path);
+            var provider = new WuGing.VectorTileRenderer.Sources.PbfTileSource(path);
             style.SetSourceProvider(0, provider);
 
             // render it on a skia canvas
@@ -174,11 +174,11 @@ namespace Demo.WPF
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             // load style and font
-            var style = new VectorTileRenderer.Style(stylePath);
+            var style = new WuGing.VectorTileRenderer.Style(stylePath);
             style.FontDirectory = mainDir + @"styles/fonts/";
 
             // set pbf as tile provider
-            var provider = new VectorTileRenderer.Sources.MbTilesSource(path);
+            var provider = new WuGing.VectorTileRenderer.Sources.MbTilesSource(path);
             style.SetSourceProvider(0, provider);
 
             BitmapSource[,] bitmapSources = new BitmapSource[maxX - minX + 1, maxY - minY + 1];
@@ -232,7 +232,7 @@ namespace Demo.WPF
             return bmp;
         }
 
-        static System.Windows.Media.Color ToMediaColor(VectorTileRenderer.Color color)
+        static System.Windows.Media.Color ToMediaColor(WuGing.VectorTileRenderer.Color color)
         {
             return System.Windows.Media.Color.FromArgb(color.A, color.R, color.G, color.B);
         }
