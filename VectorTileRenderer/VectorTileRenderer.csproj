@@ -10,11 +10,11 @@
     <PlatformTarget>x64</PlatformTarget>
     <IsPackable>true</IsPackable>
     <PackageId>WuGing.VectorTileRenderer</PackageId>
-    <Version>0.1.1-preview.3</Version>
+    <Version>0.1.1-preview.4</Version>
     <Authors>VectorTileRenderer Contributors</Authors>
     <Company>VectorTileRenderer Contributors</Company>
     <Description>Vector map tile renderer for .NET with style-based rendering for MBTiles and PBF sources.</Description>
-    <PackageReleaseNotes>0.1.1-preview.3&#10;- Improved Exception handling in MbTilesSource&#10;- Adding additional metrics for benchmarking&#10;- Namespace updated to 'WuGing.VectorTileRenderer'&#10;- Fixing init in netstandard2.0&#10;- Large pass to match C#14 and more standard C# naming conventions (PascalCase).</PackageReleaseNotes>
+    <PackageReleaseNotes>0.1.1-preview.4&#10;- Improved Exception handling in MbTilesSource&#10;- Adding additional metrics for benchmarking&#10;- Namespace updated to 'WuGing.VectorTileRenderer'&#10;- Fixing init in netstandard2.0&#10;- Large pass to match C#14 and more standard C# naming conventions (PascalCase).</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.NUGET.md</PackageReadmeFile>
     <PackageTags>maps;vector-tiles;mbtiles;openmaptiles;mapbox;skia</PackageTags>

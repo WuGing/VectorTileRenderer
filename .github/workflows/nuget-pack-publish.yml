@@ -90,7 +90,22 @@ jobs:
           $releaseNotes = Get-Content "release-notes.md" -Raw
           # NuGet metadata expects a single MSBuild property value; encode line breaks.
           $releaseNotes = $releaseNotes -replace "`r?`n", "&#10;"
-          dotnet pack VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-build -o artifacts -p:PackageVersion=${{ steps.meta.outputs.package_version }} -p:PackageReleaseNotes="$releaseNotes"
+          # MSBuild uses ';' as a property separator in -p arguments, so escape it.
+          $releaseNotes = $releaseNotes -replace ";", "%3B"
+
+          $packArgs = @(
+            "pack"
+            "VectorTileRenderer/VectorTileRenderer.csproj"
+            "-c"
+            "Release"
+            "--no-build"
+            "-o"
+            "artifacts"
+            "-p:PackageVersion=${{ steps.meta.outputs.package_version }}"
+            "-p:PackageReleaseNotes=$releaseNotes"
+          )
+
+          dotnet @packArgs
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
