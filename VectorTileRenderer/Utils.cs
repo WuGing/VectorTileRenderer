@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 static class Utils
 {

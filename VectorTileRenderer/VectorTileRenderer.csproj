@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
-    <RootNamespace>VectorTileRenderer</RootNamespace>
-    <AssemblyName>VectorTileRenderer</AssemblyName>
+    <RootNamespace>WuGing.VectorTileRenderer</RootNamespace>
+    <AssemblyName>WuGing.VectorTileRenderer</AssemblyName>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>disable</Nullable>

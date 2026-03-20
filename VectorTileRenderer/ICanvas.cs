@@ -2,7 +2,7 @@
 using System.IO;
 using SkiaSharp;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public interface ICanvas
 {

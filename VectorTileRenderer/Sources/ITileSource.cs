@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 
-namespace VectorTileRenderer.Sources;
+namespace WuGing.VectorTileRenderer.Sources;
 
 public interface ITileSource
 {

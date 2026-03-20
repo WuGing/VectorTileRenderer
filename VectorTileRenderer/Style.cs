@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using SkiaSharp;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public class Brush
 {
@@ -96,6 +96,7 @@ public class Source
     public string URL { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+
     public Sources.ITileSource Provider { get; set; } = null;
     public double? MinZoom { get; set; } = null;
     public double? MaxZoom { get; set; } = null;

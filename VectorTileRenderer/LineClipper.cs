@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 static class LineClipper
 {

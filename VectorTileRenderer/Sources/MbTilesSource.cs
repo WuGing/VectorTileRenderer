@@ -4,7 +4,7 @@ using System.Data.SQLite;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace VectorTileRenderer.Sources;
+namespace WuGing.VectorTileRenderer.Sources;
 
 // MbTiles loading code in GIST by geobabbler
 // https://gist.github.com/geobabbler/9213392

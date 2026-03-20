@@ -6,7 +6,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VectorTileRenderer.Sources;
+namespace WuGing.VectorTileRenderer.Sources;
 
 public class PbfTileSource : IVectorTileSource
 {

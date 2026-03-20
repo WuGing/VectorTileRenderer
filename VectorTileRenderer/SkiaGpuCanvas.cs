@@ -1,6 +1,6 @@
 using SkiaSharp;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public class SkiaGpuCanvas(GRContext context) : SkiaCanvas
 {

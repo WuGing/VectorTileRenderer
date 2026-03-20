@@ -1,6 +1,6 @@
 using System;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public readonly struct Vector2D(double x, double y)
 {

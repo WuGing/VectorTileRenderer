@@ -1,4 +1,4 @@
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public enum RenderBackend
 {

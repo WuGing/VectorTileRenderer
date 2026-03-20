@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SkiaSharp;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public class Renderer
 {
@@ -58,6 +58,8 @@ public class Renderer
         public int TextDrawCallCount { get; set; }
         public int FeatureCandidateCount { get; set; }
         public int FeatureAcceptedCount { get; set; }
+        public int UniqueFeatureCount { get; set; }
+        public int StyleEvaluationPassCount { get; set; }
     }
 
     // Optional callback for measuring hot-path timings in real app runs.
@@ -158,8 +160,11 @@ public class Renderer
         int textDrawCallCount = 0;
         int featureCandidateCount = 0;
         int featureAcceptedCount = 0;
+        int uniqueFeatureCount = 0;
+        int styleEvaluationPassCount = 0;
         double tileFetchDecodeMs = 0;
         double buildStyleEvalMs = 0;
+        HashSet<VectorTileFeature> uniqueFeaturesSeen = profilingEnabled ? [] : null;
 
         if (profilingEnabled)
         {
@@ -382,7 +387,12 @@ public class Renderer
                         {
                             if (profilingEnabled)
                             {
+                                styleEvaluationPassCount++;
                                 featureCandidateCount++;
+                                if (uniqueFeaturesSeen.Add(feature))
+                                {
+                                    uniqueFeatureCount++;
+                                }
                             }
 
                             if (!layerNeedsFeatureAttributes)
@@ -657,6 +667,8 @@ public class Renderer
                     TextDrawCallCount = textDrawCallCount,
                     FeatureCandidateCount = featureCandidateCount,
                     FeatureAcceptedCount = featureAcceptedCount,
+                    UniqueFeatureCount = uniqueFeatureCount,
+                    StyleEvaluationPassCount = styleEvaluationPassCount,
                 });
             }
             catch (Exception)

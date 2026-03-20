@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 /*
     GlobalMercator.cs

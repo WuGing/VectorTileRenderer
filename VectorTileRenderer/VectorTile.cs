@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 public class VectorTile
 {

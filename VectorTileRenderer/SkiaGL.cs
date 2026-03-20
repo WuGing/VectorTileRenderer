@@ -1,7 +1,7 @@
 ﻿using SkiaSharp;
 using System.Runtime.InteropServices;
 
-namespace VectorTileRenderer;
+namespace WuGing.VectorTileRenderer;
 
 class SkiaGL
 {
