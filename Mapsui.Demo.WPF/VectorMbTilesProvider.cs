@@ -26,6 +26,8 @@ namespace Mapsui.Demo.WPF
         private static double totalRenderMs;
         private static int totalFeatureCandidates;
         private static int totalFeatureAccepted;
+        private static int totalUniqueFeatures;
+        private static int totalStylePasses;
         private static int totalGpuRenderedTiles;
         private static int totalCpuRenderedTiles;
         private static int totalUnknownRenderedTiles;
@@ -82,6 +84,8 @@ namespace Mapsui.Demo.WPF
                 totalRenderMs += profile.TotalMs;
                 totalFeatureCandidates += profile.FeatureCandidateCount;
                 totalFeatureAccepted += profile.FeatureAcceptedCount;
+                totalUniqueFeatures += profile.UniqueFeatureCount;
+                totalStylePasses += profile.StyleEvaluationPassCount;
 
                 if (string.Equals(profile.Backend, "GPU", StringComparison.OrdinalIgnoreCase))
                 {
@@ -107,12 +111,13 @@ namespace Mapsui.Demo.WPF
                 var avgGeometry = totalGeometryMs / profileSampleCount;
                 var avgText = totalTextMs / profileSampleCount;
                 var avgTotal = totalRenderMs / profileSampleCount;
-                var avgFeatureCandidates = totalFeatureCandidates / (double)profileSampleCount;
                 var avgFeatureAccepted = totalFeatureAccepted / (double)profileSampleCount;
+                var avgUniqueFeatures = totalUniqueFeatures / (double)profileSampleCount;
+                var avgStylePasses = totalStylePasses / (double)profileSampleCount;
 
                 Trace.WriteLine(
                     string.Format(
-                        "[VectorTileRenderer][Mapsui] avg over {0} tiles => total: {1:0.00} ms, build: {2:0.00} ms (fetch: {3:0.00}, style: {4:0.00}), geometry: {5:0.00} ms, text: {6:0.00} ms, feat: {7:0.0}/{8:0.0}, backend gpu/cpu/u: {9}/{10}/{11}",
+                        "[VectorTileRenderer][Mapsui] avg over {0} tiles => total: {1:0.00} ms, build: {2:0.00} ms (fetch: {3:0.00}, style: {4:0.00}), geometry: {5:0.00} ms, text: {6:0.00} ms, feat acc/pass/uniq: {7:0.0}/{8:0.0}/{9:0.0}, backend gpu/cpu/u: {10}/{11}/{12}",
                         profileSampleCount,
                         avgTotal,
                         avgBuild,
@@ -121,13 +126,14 @@ namespace Mapsui.Demo.WPF
                         avgGeometry,
                         avgText,
                         avgFeatureAccepted,
-                        avgFeatureCandidates,
+                        avgStylePasses,
+                        avgUniqueFeatures,
                         totalGpuRenderedTiles,
                         totalCpuRenderedTiles,
                         totalUnknownRenderedTiles));
 
                 var summary = string.Format(
-                    "Tiles avg ({0}): total {1:0.00} ms | build {2:0.00} (fetch {3:0.00}, style {4:0.00}) | geom {5:0.00} | text {6:0.00} | feat {7:0}/{8:0} | backend G/C/U {9}/{10}/{11}",
+                    "Tiles avg ({0}): total {1:0.00} ms | build {2:0.00} (fetch {3:0.00}, style {4:0.00}) | geom {5:0.00} | text {6:0.00} | feat acc/pass/uniq {7:0}/{8:0}/{9:0} | backend G/C/U {10}/{11}/{12}",
                     profileSampleCount,
                     avgTotal,
                     avgBuild,
@@ -136,7 +142,8 @@ namespace Mapsui.Demo.WPF
                     avgGeometry,
                     avgText,
                     avgFeatureAccepted,
-                    avgFeatureCandidates,
+                    avgStylePasses,
+                    avgUniqueFeatures,
                     totalGpuRenderedTiles,
                     totalCpuRenderedTiles,
                     totalUnknownRenderedTiles);
@@ -156,6 +163,8 @@ namespace Mapsui.Demo.WPF
                 totalRenderMs = 0;
                 totalFeatureCandidates = 0;
                 totalFeatureAccepted = 0;
+                totalUniqueFeatures = 0;
+                totalStylePasses = 0;
                 totalGpuRenderedTiles = 0;
                 totalCpuRenderedTiles = 0;
                 totalUnknownRenderedTiles = 0;
