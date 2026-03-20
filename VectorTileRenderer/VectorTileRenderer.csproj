@@ -10,11 +10,11 @@
     <PlatformTarget>x64</PlatformTarget>
     <IsPackable>true</IsPackable>
     <PackageId>WuGing.VectorTileRenderer</PackageId>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.1-preview.2</Version>
     <Authors>VectorTileRenderer Contributors</Authors>
     <Company>VectorTileRenderer Contributors</Company>
     <Description>Vector map tile renderer for .NET with style-based rendering for MBTiles and PBF sources.</Description>
-    <PackageReleaseNotes>0.1.0-preview.1&#10;- Fork baseline from upstream project&#10;- Added runtime backend selection (CPU/GPU/Auto) via CanvasFactory&#10;- Added renderer profiling metrics and Mapsui performance overlay&#10;- Applied tile fetch/decode and style evaluation performance improvements&#10;- Added NuGet packaging metadata, SourceLink, and symbol package output (.snupkg)</PackageReleaseNotes>
+    <PackageReleaseNotes>0.1.1-preview.2&#10;- Fork baseline from upstream project&#10;- Added runtime backend selection (CPU/GPU/Auto) via CanvasFactory&#10;- Added renderer profiling metrics and Mapsui performance overlay&#10;- Applied tile fetch/decode and style evaluation performance improvements&#10;- Added NuGet packaging metadata, SourceLink, and symbol package output (.snupkg)</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.NUGET.md</PackageReadmeFile>
     <PackageTags>maps;vector-tiles;mbtiles;openmaptiles;mapbox;skia</PackageTags>
