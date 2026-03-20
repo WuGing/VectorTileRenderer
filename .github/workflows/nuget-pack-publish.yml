@@ -44,8 +44,21 @@ jobs:
         run: |
           [xml]$xml = Get-Content "VectorTileRenderer/VectorTileRenderer.csproj"
           $props = $xml.Project.PropertyGroup
-          $version = ($props | Where-Object { $_.Version } | Select-Object -First 1).Version
+          $versionFromProject = ($props | Where-Object { $_.Version } | Select-Object -First 1).Version
           $packageId = ($props | Where-Object { $_.PackageId } | Select-Object -First 1).PackageId
+
+          $version = $versionFromProject
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $versionFromTag = $env:GITHUB_REF.Substring("refs/tags/v".Length)
+            if ([string]::IsNullOrWhiteSpace($versionFromTag)) {
+              throw "Unable to derive package version from tag '$env:GITHUB_REF'."
+            }
+            if ($versionFromTag -ne $versionFromProject) {
+              throw "Version mismatch: tag '$versionFromTag' does not match project version '$versionFromProject' in VectorTileRenderer.csproj."
+            }
+            $version = $versionFromTag
+          }
+
           "package_version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "package_id=$packageId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -72,7 +85,12 @@ jobs:
           } > release-notes.md
 
       - name: Pack
-        run: dotnet pack VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-build -o artifacts
+        shell: pwsh
+        run: |
+          $releaseNotes = Get-Content "release-notes.md" -Raw
+          # NuGet metadata expects a single MSBuild property value; encode line breaks.
+          $releaseNotes = $releaseNotes -replace "`r?`n", "&#10;"
+          dotnet pack VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-build -o artifacts -p:PackageVersion=${{ steps.meta.outputs.package_version }} -p:PackageReleaseNotes="$releaseNotes"
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
@@ -94,6 +112,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
     permissions:
       contents: write
+      packages: write
 
     steps:
       - name: Download package artifacts
@@ -122,6 +141,16 @@ jobs:
             --skip-duplicate
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Push package to GitHub Packages
+        shell: bash
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key "${GITHUB_TOKEN}" \
+            --skip-duplicate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push symbol package
         shell: bash
