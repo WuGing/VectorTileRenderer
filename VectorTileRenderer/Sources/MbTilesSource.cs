@@ -92,9 +92,9 @@ public class MbTilesSource : IVectorTileSource
                 ReturnConnection(connection);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            throw new MemberAccessException("Could not load Mbtiles source file");
+            throw new InvalidOperationException("Could not load Mbtiles source file", ex);
         }
     }
 
@@ -122,9 +122,9 @@ public class MbTilesSource : IVectorTileSource
                 ReturnConnection(connection);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            throw new MemberAccessException("Could not load tile from Mbtiles");
+            throw new InvalidOperationException("Could not load tile from Mbtiles", ex);
         }
 
         return null;
@@ -137,8 +137,14 @@ public class MbTilesSource : IVectorTileSource
             File.Delete(path);
         }
 
-        using var fileStream = File.Create(path);
         using Stream tileStream = GetRawTile(x, y, zoom);
+
+        if (tileStream is null)
+        {
+            throw new InvalidOperationException("Tile not found in Mbtiles");
+        }
+        
+        using var fileStream = File.Create(path);
         tileStream.Seek(0, SeekOrigin.Begin);
         tileStream.CopyTo(fileStream);
     }
