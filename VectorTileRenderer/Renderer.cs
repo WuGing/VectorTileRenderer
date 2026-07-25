@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
 using SkiaSharp;
 
 namespace WuGing.VectorTileRenderer;
@@ -70,7 +66,7 @@ public class Renderer
         return (endTimestamp - startTimestamp) * 1000.0 / Stopwatch.Frequency;
     }
 
-    public async static Task<SKBitmap> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    public async static Task<SKBitmap> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double z, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
     {
         string layerString = whiteListLayers == null ? "" : string.Join(",-", whiteListLayers.ToArray());
 
@@ -94,7 +90,7 @@ public class Renderer
         var json = JsonSerializer.Serialize(bundle);
         var hash = Utils.Sha256(json).Substring(0, 12); // get 12 digits to avoid fs length issues
 
-        var fileName = x + "x" + y + "-" + zoom + "-" + hash + ".png";
+        var fileName = x + "x" + y + "-" + z + "-" + hash + ".png";
         var path = Path.Combine(cachePath, fileName);
 
         lock (cacheLock)
@@ -105,7 +101,7 @@ public class Renderer
             }
         }
 
-        var bitmap = await Render(style, canvas, x, y, zoom, sizeX, sizeY, scale, whiteListLayers);
+        var bitmap = await Render(style, canvas, x, y, z, sizeX, sizeY, scale, whiteListLayers);
 
         // save to file in async fashion
         var _t = Task.Run(() =>
@@ -143,7 +139,7 @@ public class Renderer
         return SKBitmap.Decode(stream);
     }
 
-    public async static Task<SKBitmap> Render(Style style, ICanvas canvas, int x, int y, double zoom, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    public async static Task<SKBitmap> Render(Style style, ICanvas canvas, int x, int y, double z, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
     {
         var profileSink = ProfileSink;
         var profilingEnabled = profileSink != null;
@@ -180,14 +176,14 @@ public class Renderer
         Dictionary<VectorTileFeature, Dictionary<string, object>> featureAttributesCache = [];
         HashSet<string> whiteListLayerSet = whiteListLayers == null ? null : new HashSet<string>(whiteListLayers);
 
-        double actualZoom = zoom;
+        double actualZoom = z;
 
         if (sizeX < 1024)
         {
             var ratio = 1024 / sizeX;
             var zoomDelta = Math.Log(ratio, 2);
 
-            actualZoom = zoom - zoomDelta;
+            actualZoom = z - zoomDelta;
         }
 
         Dictionary<string, object> rasterAttributes = new()
@@ -231,7 +227,7 @@ public class Renderer
                                 fetchStart = Stopwatch.GetTimestamp();
                             }
 
-                            var tile = await (layer.Source.Provider as Sources.IVectorTileSource).GetVectorTile(x, y, (int)zoom);
+                            var tile = await (layer.Source.Provider as Sources.IVectorTileSource).GetVectorTile(x, y, (int)z);
 
                             if (profilingEnabled)
                             {
@@ -242,7 +238,7 @@ public class Renderer
                             {
                                 return null;
                                 // throwing exceptions screws up the performance
-                                throw new FileNotFoundException("Could not load tile : " + x + "," + y + "," + zoom + " of " + layer.SourceName);
+                                throw new FileNotFoundException("Could not load tile : " + x + "," + y + "," + z + " of " + layer.SourceName);
                             }
 
                             // magic sauce! :p
@@ -281,7 +277,7 @@ public class Renderer
                                 fetchStart = Stopwatch.GetTimestamp();
                             }
 
-                            var tile = await layer.Source.Provider.GetTile(x, y, (int)zoom);
+                            var tile = await layer.Source.Provider.GetTile(x, y, (int)z);
 
                             if (profilingEnabled)
                             {
@@ -292,7 +288,7 @@ public class Renderer
                             {
                                 continue;
                                 // throwing exceptions screws up the performance
-                                throw new FileNotFoundException("Could not load tile : " + x + "," + y + "," + zoom + " of " + layer.SourceName);
+                                throw new FileNotFoundException("Could not load tile : " + x + "," + y + "," + z + " of " + layer.SourceName);
                             }
 
                             rasterTileCache[layer.Source] = tile;
@@ -302,7 +298,7 @@ public class Renderer
 
                     if (rasterTile != null)
                     {
-                        if (style.ValidateLayer(layer, (int)zoom, null))
+                        if (style.ValidateLayer(layer, (int)z, null))
                         {
                             long styleEvalStart = 0;
                             if (profilingEnabled)
@@ -654,7 +650,7 @@ public class Renderer
                 {
                     X = x,
                     Y = y,
-                    Zoom = zoom,
+                    Zoom = z,
                     Backend = CurrentBackendHint ?? "Unknown",
                     BuildVisualLayersMs = ElapsedMs(buildStart, buildEnd),
                     TileFetchDecodeMs = tileFetchDecodeMs,

@@ -1,19 +1,20 @@
-﻿using System.Data.SQLite;
+using System.Data.SQLite;
 
 namespace WuGing.VectorTileRenderer.Sources;
 
 // MbTiles loading code in GIST by geobabbler
 // https://gist.github.com/geobabbler/9213392
 
-[Obsolete("Use SingleMbTilesSource instead")]
-public class MbTilesSource : IVectorTileSource
+public sealed class SingleMbTilesSource : IVectorTileSource, IDisposable
 {
     private readonly GlobalMercator gmt = new();
     private readonly string connectionString;
     private readonly ConcurrentBag<SQLiteConnection> connectionPool = [];
     private readonly ConcurrentDictionary<(int X, int Y, int Z), VectorTile> tileCache = new();
+    private readonly ConcurrentDictionary<(string sourceid, int X, int Y, int Z), VectorTile> tileCacheWithSource = new();
     private readonly ConcurrentDictionary<(int X, int Y, int Z), object> tileLocks = new();
 
+    public string Path { get; private set; }
     public GlobalMercator.GeoExtent Bounds { get; private set; }
     public GlobalMercator.CoordinatePair Center { get; private set; }
     public int MinZoom { get; private set; }
@@ -21,9 +22,8 @@ public class MbTilesSource : IVectorTileSource
     public string Name { get; private set; }
     public string Description { get; private set; }
     public string MBTilesVersion { get; private set; }
-    public string Path { get; private set; }
 
-    public MbTilesSource(string path)
+    public SingleMbTilesSource(string path)
     {
         Path = path;
         connectionString = string.Format("Data Source={0};Version=3;Mode=ReadOnly;Pooling=True", Path);
@@ -256,9 +256,9 @@ public class MbTilesSource : IVectorTileSource
         }
     }
 
-    Task<Stream> ITileSource.GetTile(int x, int y, int z)
+    Task<Stream> ITileSource.GetTile(int x, int y, int zoom)
     {
-        return Task.FromResult(GetRawTile(x, y, z));
+        return Task.FromResult(GetRawTile(x, y, zoom));
     }
 
     private SQLiteConnection RentConnection()
@@ -292,5 +292,13 @@ public class MbTilesSource : IVectorTileSource
         }
 
         connectionPool.Add(connection);
+    }
+
+    public void Dispose()
+    {
+        foreach (var connection in connectionPool)
+        {
+            connection.Dispose();
+        }
     }
 }

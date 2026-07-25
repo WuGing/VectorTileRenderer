@@ -1,5 +1,3 @@
-using System;
-
 namespace WuGing.VectorTileRenderer;
 
 public readonly struct Vector2D(double x, double y)

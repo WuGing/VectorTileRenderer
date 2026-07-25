@@ -1,10 +1,6 @@
 ﻿using Mapbox.Vector.Tile;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace WuGing.VectorTileRenderer.Sources;
 
@@ -23,17 +19,17 @@ public class PbfTileSource : IVectorTileSource
         Stream = stream;
     }
 
-    public Task<Stream> GetTile(int x, int y, int zoom)
+    public Task<Stream> GetTile(int x, int y, int z)
     {
-        var qualifiedPath = ResolveTilePath(Path, x, y, zoom);
+        var qualifiedPath = ResolveTilePath(Path, x, y, z);
         return Task.FromResult<Stream>(File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.Read));
     }
     
-    public Task<VectorTile> GetVectorTile(int x, int y, int zoom)
+    public Task<VectorTile> GetVectorTile(int x, int y, int z)
     {
         if (Path != string.Empty)
         {
-            var qualifiedPath = ResolveTilePath(Path, x, y, zoom);
+            var qualifiedPath = ResolveTilePath(Path, x, y, z);
             using var stream = File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             return Task.FromResult(UnzipStream(stream));
         }
@@ -45,7 +41,7 @@ public class PbfTileSource : IVectorTileSource
         return Task.FromResult<VectorTile>(null);
     }
 
-    private static string ResolveTilePath(string templatePath, int x, int y, int zoom)
+    private static string ResolveTilePath(string templatePath, int x, int y, int z)
     {
         if (string.IsNullOrEmpty(templatePath) || templatePath.IndexOf('{') < 0)
         {
@@ -85,7 +81,7 @@ public class PbfTileSource : IVectorTileSource
                     builder.Append(yString);
                     break;
                 case "z":
-                    zString ??= zoom.ToString();
+                    zString ??= z.ToString();
                     builder.Append(zString);
                     break;
                 default:
@@ -99,7 +95,7 @@ public class PbfTileSource : IVectorTileSource
         return builder.ToString();
     }
 
-    private VectorTile UnzipStream(Stream stream)
+    private static VectorTile UnzipStream(Stream stream)
     {
         if (IsGZipped(stream))
         {

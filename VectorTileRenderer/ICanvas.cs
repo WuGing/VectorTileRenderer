@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using SkiaSharp;
+﻿using SkiaSharp;
 
 namespace WuGing.VectorTileRenderer;
 
