@@ -332,3 +332,7 @@ ASALocalRun/
 .mfractor/
 /packages
 /tile-cache
+
+# Developer-supplied real-world datasets may have redistribution restrictions.
+/tiles/real/*
+!/tiles/real/README.md

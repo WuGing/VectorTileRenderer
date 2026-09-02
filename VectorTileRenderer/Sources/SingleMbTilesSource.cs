@@ -11,7 +11,6 @@ public sealed class SingleMbTilesSource : IVectorTileSource, IDisposable
     private readonly string connectionString;
     private readonly ConcurrentBag<SQLiteConnection> connectionPool = [];
     private readonly ConcurrentDictionary<(int X, int Y, int Z), VectorTile> tileCache = new();
-    private readonly ConcurrentDictionary<(string sourceid, int X, int Y, int Z), VectorTile> tileCacheWithSource = new();
     private readonly ConcurrentDictionary<(int X, int Y, int Z), object> tileLocks = new();
 
     public string Path { get; private set; }

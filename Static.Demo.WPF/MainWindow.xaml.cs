@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -28,12 +29,16 @@ namespace Demo.WPF
             // first, we extract necessary pbf tiles from mbtiles db
 
             var coords = gmt.LatLonToTile(47.371143, 8.543924, 14);
-            var tileSource = new WuGing.VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/zurich.mbtiles");
-            tileSource.ExtractTile(coords.X, coords.Y, 14, mainDir + @"tiles/zurich.pbf.gz");
+            using (var tileSource = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(mainDir + @"tiles/zurich.mbtiles"))
+            {
+                tileSource.ExtractTile(coords.X, coords.Y, 14, mainDir + @"tiles/zurich.pbf.gz");
+            }
 
             coords = gmt.LatLonToTile(33.693189, 73.061415, 11);
-            tileSource = new WuGing.VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/islamabad.mbtiles");
-            tileSource.ExtractTile(coords.X, coords.Y, 11, mainDir + @"tiles/islamabad.pbf.gz");
+            using (var tileSource = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(mainDir + @"tiles/islamabad.mbtiles"))
+            {
+                tileSource.ExtractTile(coords.X, coords.Y, 11, mainDir + @"tiles/islamabad.pbf.gz");
+            }
         }
 
         private void RadioButton_Checked(object sender, RoutedEventArgs e)
@@ -78,6 +83,32 @@ namespace Demo.WPF
         void islamabadMbTilesLightStyle()
         {
             showMbTiles(mainDir + @"tiles/islamabad.mbtiles", mainDir + @"styles/light-style.json", 1438, 1226, 1440, 1228, 11, 512);
+        }
+
+        void zurichCompositeMbTilesBasicStyle()
+        {
+            showCompositeMbTiles(
+                [mainDir + @"tiles/zurich.mbtiles", mainDir + @"tiles/islamabad.mbtiles"],
+                mainDir + @"styles/basic-style.json",
+                8579,
+                10645,
+                8581,
+                10647,
+                14,
+                512);
+        }
+
+        void islamabadCompositeMbTilesBasicStyle()
+        {
+            showCompositeMbTiles(
+                [mainDir + @"tiles/zurich.mbtiles", mainDir + @"tiles/islamabad.mbtiles"],
+                mainDir + @"styles/basic-style.json",
+                1438,
+                1226,
+                1440,
+                1228,
+                11,
+                512);
         }
 
         void guangzhouMbTilesAliFluxStyle()
@@ -171,34 +202,47 @@ namespace Demo.WPF
 
         async void showMbTiles(string path, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size = 512, double scale = 1)
         {
+            using var provider = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(path);
+            await showMbTilesSource(provider, stylePath, minX, minY, maxX, maxY, zoom, size, scale);
+        }
+
+        async void showCompositeMbTiles(IReadOnlyList<string> paths, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size = 512, double scale = 1)
+        {
+            using var provider = new WuGing.VectorTileRenderer.Sources.CompositeMbTilesSource(paths);
+            await showMbTilesSource(provider, stylePath, minX, minY, maxX, maxY, zoom, size, scale);
+        }
+
+        async Task showMbTilesSource(WuGing.VectorTileRenderer.Sources.IVectorTileSource provider, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size, double scale)
+        {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            // load style and font
-            var style = new WuGing.VectorTileRenderer.Style(stylePath);
-            style.FontDirectory = mainDir + @"styles/fonts/";
-
-            // set pbf as tile provider
-            var provider = new WuGing.VectorTileRenderer.Sources.MbTilesSource(path);
+            // Load one style and attach either a single or composite MBTiles source.
+            var style = new WuGing.VectorTileRenderer.Style(stylePath)
+            {
+                FontDirectory = mainDir + @"styles/fonts/"
+            };
             style.SetSourceProvider(0, provider);
 
             BitmapSource[,] bitmapSources = new BitmapSource[maxX - minX + 1, maxY - minY + 1];
 
-            // loop through tiles and render them
-            Parallel.For(minX, maxX + 1, (int x) =>
+            // Render all tiles concurrently and wait for every render before merging.
+            List<Task> renderTasks = new List<Task>();
+            for (int x = minX; x <= maxX; x++)
             {
-                Parallel.For(minY, maxY + 1, async (int y) =>
+                for (int y = minY; y <= maxY; y++)
                 {
-                    var canvas = new SkiaCanvas();
-                    var bitmapR = await Renderer.Render(style, canvas, x, y, zoom, size, size, scale);
-
-                    if (bitmapR == null)
+                    int tileX = x;
+                    int tileY = y;
+                    renderTasks.Add(Task.Run(async () =>
                     {
+                        var canvas = new SkiaCanvas();
+                        var bitmapR = await Renderer.Render(style, canvas, tileX, tileY, zoom, size, size, scale);
+                        bitmapSources[tileX - minX, maxY - tileY] = ToBitmapSource(bitmapR);
+                    }));
+                }
+            }
 
-                    }
-
-                    bitmapSources[x - minX, maxY - y] = ToBitmapSource(bitmapR);
-                });
-            });
+            await Task.WhenAll(renderTasks);
 
             // merge the tiles and show it
             var bitmap = mergeBitmaps(bitmapSources);

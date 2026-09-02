@@ -61,3 +61,19 @@ jobs:
 
       - name: Build solution
         run: dotnet build VectorTileRenderer.sln -c Release --no-restore
+
+      - name: Run NUnit tests with coverage
+        run: >-
+          dotnet test VectorTileRenderer.Tests/VectorTileRenderer.Tests.csproj
+          -c Release
+          --no-build
+          --logger trx
+          --collect:"XPlat Code Coverage"
+          --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: artifacts/test-results

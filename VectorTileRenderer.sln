@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gmap.Demo.WinForms", "Gmap.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mapsui.Demo.WPF", "Mapsui.Demo.WPF\Mapsui.Demo.WPF.csproj", "{3B10B84B-6803-4F4F-872D-D744E27FFA15}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectorTileRenderer.Tests", "VectorTileRenderer.Tests\VectorTileRenderer.Tests.csproj", "{5D156C6B-31C9-4E37-AB08-3DBE8D86E244}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectorTileRenderer.Benchmarks", "VectorTileRenderer.Benchmarks\VectorTileRenderer.Benchmarks.csproj", "{FB44CEB3-D12B-43BB-86AC-0A06AE6E8D65}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +39,14 @@ Global
 		{3B10B84B-6803-4F4F-872D-D744E27FFA15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B10B84B-6803-4F4F-872D-D744E27FFA15}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B10B84B-6803-4F4F-872D-D744E27FFA15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D156C6B-31C9-4E37-AB08-3DBE8D86E244}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D156C6B-31C9-4E37-AB08-3DBE8D86E244}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D156C6B-31C9-4E37-AB08-3DBE8D86E244}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D156C6B-31C9-4E37-AB08-3DBE8D86E244}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB44CEB3-D12B-43BB-86AC-0A06AE6E8D65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB44CEB3-D12B-43BB-86AC-0A06AE6E8D65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB44CEB3-D12B-43BB-86AC-0A06AE6E8D65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB44CEB3-D12B-43BB-86AC-0A06AE6E8D65}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

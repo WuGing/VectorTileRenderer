@@ -40,6 +40,11 @@
 
                 <Separator/>
 
+                <RadioButton Checked="RadioButton_Checked" GroupName="styleSelectorGroup" Tag="zurichCompositeMbTilesBasicStyle">Zurich - composite mbtiles - basic style</RadioButton>
+                <RadioButton Checked="RadioButton_Checked" GroupName="styleSelectorGroup" Tag="islamabadCompositeMbTilesBasicStyle">Islamabad - composite mbtiles - basic style</RadioButton>
+
+                <Separator/>
+
                 <RadioButton Checked="RadioButton_Checked" GroupName="styleSelectorGroup" Tag="newyorkPbfMbStreetsStyle">New York - pbf(mapbox) - streets style</RadioButton>
                 <RadioButton Checked="RadioButton_Checked" GroupName="styleSelectorGroup" Tag="newyorkPbfMbRunnerStyle">New York - pbf(mapbox) - runner style</RadioButton>
                 <RadioButton Checked="RadioButton_Checked" GroupName="styleSelectorGroup" Tag="zurichMbTilesHybridStyle">Zurich - mbtiles pbf - hybrid style</RadioButton>

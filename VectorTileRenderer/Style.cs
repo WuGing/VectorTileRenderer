@@ -110,7 +110,7 @@ public class Style
 
     private readonly ConcurrentDictionary<string, Brush[]> brushesCache = new();
     private readonly ConcurrentDictionary<string, Color> colorCache = new();
-    private readonly Dictionary<int, bool> layerFeatureDependencyCache = [];
+    private readonly ConcurrentDictionary<int, bool> layerFeatureDependencyCache = [];
 
     public string FontDirectory { get; set; } = null;
 
@@ -338,8 +338,7 @@ public class Style
             || TokenUsesFeatureAttributes(layer.Paint)
             || TokenUsesFeatureAttributes(layer.Layout);
 
-        layerFeatureDependencyCache[layer.Index] = needs;
-        return needs;
+        return layerFeatureDependencyCache.GetOrAdd(layer.Index, needs);
     }
 
     private static bool TokenUsesFeatureAttributes(object token)

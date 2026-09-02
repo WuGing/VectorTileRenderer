@@ -12,16 +12,30 @@ Vector map tile rendering library for .NET.
 ## Quick Start
 
 ```csharp
-var style = new VectorTileRenderer.Style("styles/basic-style.json")
+var style = new WuGing.VectorTileRenderer.Style("styles/basic-style.json")
 {
     FontDirectory = "styles/fonts/"
 };
 
-var source = new VectorTileRenderer.Sources.MbTilesSource("tiles/zurich.mbtiles");
+using var source = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource("tiles/zurich.mbtiles");
 style.SetSourceProvider("openmaptiles", source);
 
-var canvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Cpu);
-var bitmap = await VectorTileRenderer.Renderer.Render(style, canvas, 1439, 1227, 13, 512, 512, 1);
+var canvas = WuGing.VectorTileRenderer.CanvasFactory.Create(WuGing.VectorTileRenderer.RenderBackend.Cpu);
+var bitmap = await WuGing.VectorTileRenderer.Renderer.Render(style, canvas, 1439, 1227, 13, 512, 512, 1);
+```
+
+Multiple regional databases can be exposed as one source. Requests are routed
+using MBTiles coverage metadata and fall through when a matching database does
+not contain the requested tile:
+
+```csharp
+using var source = new WuGing.VectorTileRenderer.Sources.CompositeMbTilesSource(
+[
+    "tiles/region-a.mbtiles",
+    "tiles/region-b.mbtiles"
+]);
+
+style.SetSourceProvider("openmaptiles", source);
 ```
 
 ## Backend Notes

@@ -10,11 +10,11 @@
     <PlatformTarget>x64</PlatformTarget>
     <IsPackable>true</IsPackable>
     <PackageId>WuGing.VectorTileRenderer</PackageId>
-    <Version>0.1.1-preview.4</Version>
+    <Version>0.1.1-preview.5</Version>
     <Authors>VectorTileRenderer Contributors</Authors>
     <Company>VectorTileRenderer Contributors</Company>
     <Description>Vector map tile renderer for .NET with style-based rendering for MBTiles and PBF sources.</Description>
-    <PackageReleaseNotes>0.1.1-preview.4&#10;- Improved Exception handling in MbTilesSource&#10;- Adding additional metrics for benchmarking&#10;- Namespace updated to 'WuGing.VectorTileRenderer'&#10;- Fixing init in netstandard2.0&#10;- Large pass to match C#14 and more standard C# naming conventions (PascalCase).</PackageReleaseNotes>
+    <PackageReleaseNotes>0.1.1-preview.5&#10;- Added coverage-aware CompositeMbTilesSource routing with path-list construction, priority, fallback, aggregate metadata, and overzoom support.&#10;- Added an NUnit regression suite, coverage collection in CI, and composite MBTiles integration tests.&#10;- Added license-safe synthetic MBTiles fixture generation and a gitignored location for developer-supplied real-world data.&#10;- Added isolated BenchmarkDotNet coverage and improved quadtree generation and extent remapping performance.&#10;- Added composite MBTiles examples to the static WPF demo and migrated demos to SingleMbTilesSource.&#10;- Enabled warnings as errors across the solution.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.NUGET.md</PackageReadmeFile>
     <PackageTags>maps;vector-tiles;mbtiles;openmaptiles;mapbox;skia</PackageTags>
