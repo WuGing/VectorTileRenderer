@@ -236,7 +236,7 @@ namespace Demo.WPF
                     renderTasks.Add(Task.Run(async () =>
                     {
                         var canvas = new SkiaCanvas();
-                        var bitmapR = await Renderer.Render(style, canvas, tileX, tileY, zoom, size, size, scale);
+                        using var bitmapR = await Renderer.Render(style, canvas, tileX, tileY, zoom, size, size, scale);
                         bitmapSources[tileX - minX, maxY - tileY] = ToBitmapSource(bitmapR);
                     }));
                 }
