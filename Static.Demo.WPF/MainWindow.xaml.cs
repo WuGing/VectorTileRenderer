@@ -212,6 +212,7 @@ namespace Demo.WPF
             await showMbTilesSource(provider, stylePath, minX, minY, maxX, maxY, zoom, size, scale);
         }
 
+#nullable enable
         async Task showMbTilesSource(WuGing.VectorTileRenderer.Sources.IVectorTileSource provider, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size, double scale)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -223,7 +224,10 @@ namespace Demo.WPF
             };
             style.SetSourceProvider(0, provider);
 
-            BitmapSource[,] bitmapSources = new BitmapSource[maxX - minX + 1, maxY - minY + 1];
+            int tilePixelWidth = (int)(size * scale);
+            int tilePixelHeight = (int)(size * scale);
+            var missingTile = CreateTransparentBitmapSource(tilePixelWidth, tilePixelHeight);
+            BitmapSource?[,] bitmapSources = new BitmapSource?[maxX - minX + 1, maxY - minY + 1];
 
             // Render all tiles concurrently and wait for every render before merging.
             List<Task> renderTasks = new List<Task>();
@@ -236,8 +240,8 @@ namespace Demo.WPF
                     renderTasks.Add(Task.Run(async () =>
                     {
                         var canvas = new SkiaCanvas();
-                        using var bitmapR = await Renderer.Render(style, canvas, tileX, tileY, zoom, size, size, scale);
-                        bitmapSources[tileX - minX, maxY - tileY] = ToBitmapSource(bitmapR);
+                        using SKBitmap? bitmapR = await Renderer.Render(style, canvas, tileX, tileY, zoom, size, size, scale);
+                        bitmapSources[tileX - minX, maxY - tileY] = ToBitmapSource(bitmapR) ?? missingTile;
                     }));
                 }
             }
@@ -245,7 +249,7 @@ namespace Demo.WPF
             await Task.WhenAll(renderTasks);
 
             // merge the tiles and show it
-            var bitmap = mergeBitmaps(bitmapSources);
+            var bitmap = mergeBitmaps(bitmapSources, missingTile);
             demoImage.Source = bitmap;
 
             scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(zoom)));
@@ -255,7 +259,34 @@ namespace Demo.WPF
             Console.WriteLine(elapsedMs + "ms time");
         }
 
-        BitmapSource mergeBitmaps(BitmapSource[,] bitmapSources)
+        static BitmapSource CreateTransparentBitmapSource(int width, int height)
+        {
+            if (width <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(width));
+            }
+
+            if (height <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(height));
+            }
+
+            int stride = checked(width * 4);
+            byte[] pixels = new byte[checked(stride * height)];
+            var bitmap = BitmapSource.Create(
+                width,
+                height,
+                96,
+                96,
+                PixelFormats.Pbgra32,
+                null,
+                pixels,
+                stride);
+            bitmap.Freeze();
+            return bitmap;
+        }
+
+        BitmapSource mergeBitmaps(BitmapSource?[,] bitmapSources, BitmapSource missingTile)
         {
             DrawingVisual drawingVisual = new DrawingVisual();
             using (DrawingContext drawingContext = drawingVisual.RenderOpen())
@@ -264,12 +295,24 @@ namespace Demo.WPF
                 {
                     for (int y = 0; y < bitmapSources.GetLength(1); y++)
                     {
-                        drawingContext.DrawImage(bitmapSources[x, y], new System.Windows.Rect(x * bitmapSources[x, y].Width, y * bitmapSources[x, y].Height, bitmapSources[x, y].Width, bitmapSources[x, y].Height));
+                        BitmapSource tile = bitmapSources[x, y] ?? missingTile;
+                        drawingContext.DrawImage(
+                            tile,
+                            new System.Windows.Rect(
+                                x * missingTile.PixelWidth,
+                                y * missingTile.PixelHeight,
+                                missingTile.PixelWidth,
+                                missingTile.PixelHeight));
                     }
                 }
             }
 
-            RenderTargetBitmap bmp = new RenderTargetBitmap((int)(bitmapSources.GetLength(0) * bitmapSources[0, 0].Width), (int)(bitmapSources.GetLength(1) * bitmapSources[0, 0].Height), 96, 96, PixelFormats.Pbgra32);
+            RenderTargetBitmap bmp = new RenderTargetBitmap(
+                checked(bitmapSources.GetLength(0) * missingTile.PixelWidth),
+                checked(bitmapSources.GetLength(1) * missingTile.PixelHeight),
+                96,
+                96,
+                PixelFormats.Pbgra32);
             bmp.Render(drawingVisual);
             bmp.Freeze();
 
@@ -281,7 +324,7 @@ namespace Demo.WPF
             return System.Windows.Media.Color.FromArgb(color.A, color.R, color.G, color.B);
         }
 
-        static BitmapSource ToBitmapSource(SKBitmap bitmap)
+        static BitmapSource? ToBitmapSource(SKBitmap? bitmap)
         {
             if (bitmap == null)
             {
@@ -301,6 +344,7 @@ namespace Demo.WPF
                 return result;
             }
         }
+#nullable restore
 
         private void demoImage_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
