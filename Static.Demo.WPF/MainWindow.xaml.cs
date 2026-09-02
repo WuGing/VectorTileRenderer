@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -28,96 +29,133 @@ namespace Demo.WPF
             // first, we extract necessary pbf tiles from mbtiles db
 
             var coords = gmt.LatLonToTile(47.371143, 8.543924, 14);
-            var tileSource = new WuGing.VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/zurich.mbtiles");
-            tileSource.ExtractTile(coords.X, coords.Y, 14, mainDir + @"tiles/zurich.pbf.gz");
+            using (var tileSource = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(mainDir + @"tiles/zurich.mbtiles"))
+            {
+                tileSource.ExtractTile(coords.X, coords.Y, 14, mainDir + @"tiles/zurich.pbf.gz");
+            }
 
             coords = gmt.LatLonToTile(33.693189, 73.061415, 11);
-            tileSource = new WuGing.VectorTileRenderer.Sources.MbTilesSource(mainDir + @"tiles/islamabad.mbtiles");
-            tileSource.ExtractTile(coords.X, coords.Y, 11, mainDir + @"tiles/islamabad.pbf.gz");
+            using (var tileSource = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(mainDir + @"tiles/islamabad.mbtiles"))
+            {
+                tileSource.ExtractTile(coords.X, coords.Y, 11, mainDir + @"tiles/islamabad.pbf.gz");
+            }
         }
 
-        private void RadioButton_Checked(object sender, RoutedEventArgs e)
+        private async void RadioButton_Checked(object sender, RoutedEventArgs e)
         {
-            var functionName = (sender as RadioButton).Tag as string;
+            if (sender is not RadioButton { Tag: string functionName })
+            {
+                return;
+            }
 
             // use a little reflection to call example function by name ;)
             MethodInfo theMethod = this.GetType().GetMethod(functionName, BindingFlags.Instance | BindingFlags.NonPublic);
-            theMethod.Invoke(this, null);
+            if (theMethod == null)
+            {
+                throw new InvalidOperationException($"Could not find demo method '{functionName}'.");
+            }
+
+            if (theMethod.Invoke(this, null) is not Task renderTask)
+            {
+                throw new InvalidOperationException($"Demo method '{functionName}' must return Task.");
+            }
+
+            await renderTask;
         }
 
-        void zurichMbTilesAliFluxStyle()
+        Task zurichMbTilesAliFluxStyle()
         {
-            showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/aliflux-style.json", 8579, 10645, 8581, 10647, 14, 512);
+            return showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/aliflux-style.json", 8579, 10645, 8581, 10647, 14, 512);
         }
 
-        void zurichMbTilesBasicStyle()
+        Task zurichMbTilesBasicStyle()
         {
-            showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/basic-style.json", 8579, 10645, 8581, 10647, 14, 512);
+            return showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/basic-style.json", 8579, 10645, 8581, 10647, 14, 512);
         }
 
-        void zurichMbTilesLibertyStyle()
+        Task zurichMbTilesLibertyStyle()
         {
-            showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/liberty-style.json", 8579, 10645, 8581, 10647, 14, 512);
+            return showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/liberty-style.json", 8579, 10645, 8581, 10647, 14, 512);
         }
 
-        void zurichMbTilesBrightStyle()
+        Task zurichMbTilesBrightStyle()
         {
-            showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/bright-style.json", 8579, 10645, 8581, 10647, 14, 512);
+            return showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/bright-style.json", 8579, 10645, 8581, 10647, 14, 512);
         }
 
-        void zurichMbTilesDarkStyle()
+        Task zurichMbTilesDarkStyle()
         {
-            showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/dark-style.json", 8579, 10645, 8581, 10647, 14, 512);
+            return showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/dark-style.json", 8579, 10645, 8581, 10647, 14, 512);
         }
 
-        void islamabadMbTilesBrightStyle()
+        Task islamabadMbTilesBrightStyle()
         {
-            showMbTiles(mainDir + @"tiles/islamabad.mbtiles", mainDir + @"styles/bright-style.json", 1438, 1226, 1440, 1228, 11, 512);
+            return showMbTiles(mainDir + @"tiles/islamabad.mbtiles", mainDir + @"styles/bright-style.json", 1438, 1226, 1440, 1228, 11, 512);
         }
 
-        void islamabadMbTilesLightStyle()
+        Task islamabadMbTilesLightStyle()
         {
-            showMbTiles(mainDir + @"tiles/islamabad.mbtiles", mainDir + @"styles/light-style.json", 1438, 1226, 1440, 1228, 11, 512);
+            return showMbTiles(mainDir + @"tiles/islamabad.mbtiles", mainDir + @"styles/light-style.json", 1438, 1226, 1440, 1228, 11, 512);
         }
 
-        void guangzhouMbTilesAliFluxStyle()
+        Task zurichCompositeMbTilesBasicStyle()
         {
-            //showMbTiles(mainDir + @"tiles/guangzhou.mbtiles", mainDir + @"styles/aliflux-style.json", 416, 288, 418, 290, 9, 512);
-            showMbTiles(@"F:\AliData\C#\FlightMapper\FlightMapper\bin\Debug\tiles\asia.mbtiles", mainDir + @"styles/aliflux-style.json", 368, 311, 373, 313, 9, 512);
+            return showCompositeMbTiles(
+                [mainDir + @"tiles/zurich.mbtiles", mainDir + @"tiles/islamabad.mbtiles"],
+                mainDir + @"styles/basic-style.json",
+                8579,
+                10645,
+                8581,
+                10647,
+                14,
+                512);
         }
 
-        void zurichPbfBasicStyle()
+        Task islamabadCompositeMbTilesBasicStyle()
         {
-            showPbf(mainDir + @"tiles/zurich.pbf.gz", mainDir + @"styles/basic-style.json", 14);
+            return showCompositeMbTiles(
+                [mainDir + @"tiles/zurich.mbtiles", mainDir + @"tiles/islamabad.mbtiles"],
+                mainDir + @"styles/basic-style.json",
+                1438,
+                1226,
+                1440,
+                1228,
+                11,
+                512);
         }
 
-        void islamabadScalePbfBasicStyle()
+        Task zurichPbfBasicStyle()
         {
-            showPbf(mainDir + @"tiles/islamabad.pbf.gz", mainDir + @"styles/basic-style.json", 11, 512, 2);
+            return showPbf(mainDir + @"tiles/zurich.pbf.gz", mainDir + @"styles/basic-style.json", 14);
         }
 
-        void islamabadSizePbfBasicStyle()
+        Task islamabadScalePbfBasicStyle()
         {
-            showPbf(mainDir + @"tiles/islamabad.pbf.gz", mainDir + @"styles/basic-style.json", 11, 1024, 1);
+            return showPbf(mainDir + @"tiles/islamabad.pbf.gz", mainDir + @"styles/basic-style.json", 11, 512, 2);
         }
 
-        void newyorkPbfMbStreetsStyle()
+        Task islamabadSizePbfBasicStyle()
         {
-            showPbf(mainDir + @"tiles/newyork-mapbox.pbf", mainDir + @"styles/streets-style.json", 11);
+            return showPbf(mainDir + @"tiles/islamabad.pbf.gz", mainDir + @"styles/basic-style.json", 11, 1024, 1);
         }
 
-        void newyorkPbfMbRunnerStyle()
+        Task newyorkPbfMbStreetsStyle()
         {
-            showPbf(mainDir + @"tiles/newyork-mapbox.pbf", mainDir + @"styles/Runner-style.json", 11);
+            return showPbf(mainDir + @"tiles/newyork-mapbox.pbf", mainDir + @"styles/streets-style.json", 11);
         }
 
-        void zurichOverzoomedMbTilesBasicStyle()
+        Task newyorkPbfMbRunnerStyle()
+        {
+            return showPbf(mainDir + @"tiles/newyork-mapbox.pbf", mainDir + @"styles/Runner-style.json", 11);
+        }
+
+        Task zurichOverzoomedMbTilesBasicStyle()
         {
             var coords = gmt.LatLonToTile(47.382047, 8.525868, 16);
-            showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/basic-style.json", coords.X, coords.Y, coords.X, coords.Y, 16, 512);
+            return showMbTiles(mainDir + @"tiles/zurich.mbtiles", mainDir + @"styles/basic-style.json", coords.X, coords.Y, coords.X, coords.Y, 16, 512);
         }
 
-        async void zurichMbTilesHybridStyle()
+        async Task zurichMbTilesHybridStyle()
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -145,7 +183,7 @@ namespace Demo.WPF
             Console.WriteLine(elapsedMs + "ms time");
         }
 
-        async void showPbf(string path, string stylePath, double zoom, double size = 512, double scale = 1)
+        async Task showPbf(string path, string stylePath, double zoom, double size = 512, double scale = 1)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -169,39 +207,62 @@ namespace Demo.WPF
             Console.WriteLine(elapsedMs + "ms time");
         }
 
-        async void showMbTiles(string path, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size = 512, double scale = 1)
+        async Task showMbTiles(string path, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size = 512, double scale = 1)
+        {
+            using var provider = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(path);
+            await showMbTilesSource(provider, stylePath, minX, minY, maxX, maxY, zoom, size, scale);
+        }
+
+        async Task showCompositeMbTiles(IReadOnlyList<string> paths, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size = 512, double scale = 1)
+        {
+            using var provider = new WuGing.VectorTileRenderer.Sources.CompositeMbTilesSource(paths);
+            await showMbTilesSource(provider, stylePath, minX, minY, maxX, maxY, zoom, size, scale);
+        }
+
+#nullable enable
+        async Task showMbTilesSource(WuGing.VectorTileRenderer.Sources.IVectorTileSource provider, string stylePath, int minX, int minY, int maxX, int maxY, int zoom, double size, double scale)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            // load style and font
-            var style = new WuGing.VectorTileRenderer.Style(stylePath);
-            style.FontDirectory = mainDir + @"styles/fonts/";
-
-            // set pbf as tile provider
-            var provider = new WuGing.VectorTileRenderer.Sources.MbTilesSource(path);
+            // Load one style and attach either a single or composite MBTiles source.
+            var style = new WuGing.VectorTileRenderer.Style(stylePath)
+            {
+                FontDirectory = mainDir + @"styles/fonts/"
+            };
             style.SetSourceProvider(0, provider);
 
-            BitmapSource[,] bitmapSources = new BitmapSource[maxX - minX + 1, maxY - minY + 1];
+            int tilePixelWidth = (int)(size * scale);
+            int tilePixelHeight = (int)(size * scale);
+            var missingTile = CreateTransparentBitmapSource(tilePixelWidth, tilePixelHeight);
+            BitmapSource?[,] bitmapSources = new BitmapSource?[maxX - minX + 1, maxY - minY + 1];
 
-            // loop through tiles and render them
-            Parallel.For(minX, maxX + 1, (int x) =>
+            // Bound concurrency so large ranges do not queue one worker per tile.
+            var parallelOptions = new ParallelOptions
             {
-                Parallel.For(minY, maxY + 1, async (int y) =>
+                MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 8)
+            };
+            await Parallel.ForEachAsync(
+                EnumerateTileCoordinates(minX, minY, maxX, maxY),
+                parallelOptions,
+                async (coordinate, cancellationToken) =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var canvas = new SkiaCanvas();
-                    var bitmapR = await Renderer.Render(style, canvas, x, y, zoom, size, size, scale);
-
-                    if (bitmapR == null)
-                    {
-
-                    }
-
-                    bitmapSources[x - minX, maxY - y] = ToBitmapSource(bitmapR);
+                    using SKBitmap? bitmapR = await Renderer.Render(
+                        style,
+                        canvas,
+                        coordinate.X,
+                        coordinate.Y,
+                        zoom,
+                        size,
+                        size,
+                        scale);
+                    bitmapSources[coordinate.X - minX, maxY - coordinate.Y] =
+                        ToBitmapSource(bitmapR) ?? missingTile;
                 });
-            });
 
             // merge the tiles and show it
-            var bitmap = mergeBitmaps(bitmapSources);
+            var bitmap = mergeBitmaps(bitmapSources, missingTile);
             demoImage.Source = bitmap;
 
             scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(zoom)));
@@ -211,7 +272,45 @@ namespace Demo.WPF
             Console.WriteLine(elapsedMs + "ms time");
         }
 
-        BitmapSource mergeBitmaps(BitmapSource[,] bitmapSources)
+        static IEnumerable<(int X, int Y)> EnumerateTileCoordinates(int minX, int minY, int maxX, int maxY)
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                for (int y = minY; y <= maxY; y++)
+                {
+                    yield return (x, y);
+                }
+            }
+        }
+
+        static BitmapSource CreateTransparentBitmapSource(int width, int height)
+        {
+            if (width <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(width));
+            }
+
+            if (height <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(height));
+            }
+
+            int stride = checked(width * 4);
+            byte[] pixels = new byte[checked(stride * height)];
+            var bitmap = BitmapSource.Create(
+                width,
+                height,
+                96,
+                96,
+                PixelFormats.Pbgra32,
+                null,
+                pixels,
+                stride);
+            bitmap.Freeze();
+            return bitmap;
+        }
+
+        BitmapSource mergeBitmaps(BitmapSource?[,] bitmapSources, BitmapSource missingTile)
         {
             DrawingVisual drawingVisual = new DrawingVisual();
             using (DrawingContext drawingContext = drawingVisual.RenderOpen())
@@ -220,12 +319,24 @@ namespace Demo.WPF
                 {
                     for (int y = 0; y < bitmapSources.GetLength(1); y++)
                     {
-                        drawingContext.DrawImage(bitmapSources[x, y], new System.Windows.Rect(x * bitmapSources[x, y].Width, y * bitmapSources[x, y].Height, bitmapSources[x, y].Width, bitmapSources[x, y].Height));
+                        BitmapSource tile = bitmapSources[x, y] ?? missingTile;
+                        drawingContext.DrawImage(
+                            tile,
+                            new System.Windows.Rect(
+                                x * missingTile.PixelWidth,
+                                y * missingTile.PixelHeight,
+                                missingTile.PixelWidth,
+                                missingTile.PixelHeight));
                     }
                 }
             }
 
-            RenderTargetBitmap bmp = new RenderTargetBitmap((int)(bitmapSources.GetLength(0) * bitmapSources[0, 0].Width), (int)(bitmapSources.GetLength(1) * bitmapSources[0, 0].Height), 96, 96, PixelFormats.Pbgra32);
+            RenderTargetBitmap bmp = new RenderTargetBitmap(
+                checked(bitmapSources.GetLength(0) * missingTile.PixelWidth),
+                checked(bitmapSources.GetLength(1) * missingTile.PixelHeight),
+                96,
+                96,
+                PixelFormats.Pbgra32);
             bmp.Render(drawingVisual);
             bmp.Freeze();
 
@@ -237,7 +348,7 @@ namespace Demo.WPF
             return System.Windows.Media.Color.FromArgb(color.A, color.R, color.G, color.B);
         }
 
-        static BitmapSource ToBitmapSource(SKBitmap bitmap)
+        static BitmapSource? ToBitmapSource(SKBitmap? bitmap)
         {
             if (bitmap == null)
             {
@@ -257,6 +368,7 @@ namespace Demo.WPF
                 return result;
             }
         }
+#nullable restore
 
         private void demoImage_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {

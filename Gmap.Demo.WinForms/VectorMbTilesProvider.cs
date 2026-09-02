@@ -11,7 +11,7 @@ namespace Gmap.Demo.WinForms
     class VectorMbTilesProvider : GMapProvider
     {
         Style style;
-        WuGing.VectorTileRenderer.Sources.MbTilesSource provider;
+        WuGing.VectorTileRenderer.Sources.SingleMbTilesSource provider;
         string cachePath;
 
         public VectorMbTilesProvider(string path, string stylePath, string cachePath)
@@ -23,7 +23,7 @@ namespace Gmap.Demo.WinForms
             };
             this.cachePath = cachePath;
 
-            provider = new WuGing.VectorTileRenderer.Sources.MbTilesSource(path);
+            provider = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(path);
             style.SetSourceProvider(0, provider);
 
             BypassCache = true;

@@ -9,14 +9,16 @@ public class VectorTile
     {
         VectorTile newTile = new()
         {
-            IsOverZoomed = IsOverZoomed
+            IsOverZoomed = IsOverZoomed,
+            Layers = new List<VectorTileLayer>(Layers.Count)
         };
 
         foreach (var layer in Layers)
         {
             var vectorLayer = new VectorTileLayer
             {
-                Name = layer.Name
+                Name = layer.Name,
+                Features = new List<VectorTileFeature>(layer.Features.Count)
             };
 
             foreach (var feature in layer.Features)
@@ -28,15 +30,17 @@ public class VectorTile
                     GeometryType = feature.GeometryType
                 };
 
-                List<List<Point>> vectorGeometry = [];
+                var vectorGeometry = new List<List<Point>>(feature.Geometry.Count);
+                var xRange = extent.Right - extent.Left;
+                var yRange = extent.Bottom - extent.Top;
                 foreach (var geometry in feature.Geometry)
                 {
-                    List<Point> vectorPoints = [];
+                    var vectorPoints = new List<Point>(geometry.Count);
 
                     foreach (var point in geometry)
                     {
-                        var newX = Utils.ConvertRange(point.X, extent.Left, extent.Right, 0, vectorFeature.Extent);
-                        var newY = Utils.ConvertRange(point.Y, extent.Top, extent.Bottom, 0, vectorFeature.Extent);
+                        var newX = xRange == 0 ? 0 : (point.X - extent.Left) * vectorFeature.Extent / xRange;
+                        var newY = yRange == 0 ? 0 : (point.Y - extent.Top) * vectorFeature.Extent / yRange;
 
                         vectorPoints.Add(new Point(newX, newY));
                     }

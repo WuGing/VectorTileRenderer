@@ -1,6 +1,5 @@
 ﻿using Mapbox.Vector.Tile;
 using System.IO.Compression;
-using System.Text;
 
 namespace WuGing.VectorTileRenderer.Sources;
 
@@ -21,7 +20,7 @@ public class PbfTileSource : IVectorTileSource
 
     public Task<Stream> GetTile(int x, int y, int z)
     {
-        var qualifiedPath = ResolveTilePath(Path, x, y, z);
+        var qualifiedPath = TilePathResolver.Resolve(Path, x, y, z);
         return Task.FromResult<Stream>(File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.Read));
     }
     
@@ -29,7 +28,7 @@ public class PbfTileSource : IVectorTileSource
     {
         if (Path != string.Empty)
         {
-            var qualifiedPath = ResolveTilePath(Path, x, y, z);
+            var qualifiedPath = TilePathResolver.Resolve(Path, x, y, z);
             using var stream = File.Open(qualifiedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             return Task.FromResult(UnzipStream(stream));
         }
@@ -39,60 +38,6 @@ public class PbfTileSource : IVectorTileSource
         }
 
         return Task.FromResult<VectorTile>(null);
-    }
-
-    private static string ResolveTilePath(string templatePath, int x, int y, int z)
-    {
-        if (string.IsNullOrEmpty(templatePath) || templatePath.IndexOf('{') < 0)
-        {
-            return templatePath;
-        }
-
-        var builder = new StringBuilder(templatePath.Length + 8);
-        string xString = null;
-        string yString = null;
-        string zString = null;
-
-        for (int i = 0; i < templatePath.Length; i++)
-        {
-            var c = templatePath[i];
-            if (c != '{')
-            {
-                builder.Append(c);
-                continue;
-            }
-
-            var closeIndex = templatePath.IndexOf('}', i + 1);
-            if (closeIndex < 0)
-            {
-                builder.Append(c);
-                continue;
-            }
-
-            var token = templatePath.Substring(i + 1, closeIndex - i - 1);
-            switch (token)
-            {
-                case "x":
-                    xString ??= x.ToString();
-                    builder.Append(xString);
-                    break;
-                case "y":
-                    yString ??= y.ToString();
-                    builder.Append(yString);
-                    break;
-                case "z":
-                    zString ??= z.ToString();
-                    builder.Append(zString);
-                    break;
-                default:
-                    builder.Append('{').Append(token).Append('}');
-                    break;
-            }
-
-            i = closeIndex;
-        }
-
-        return builder.ToString();
     }
 
     private static VectorTile UnzipStream(Stream stream)

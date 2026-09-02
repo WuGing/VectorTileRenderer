@@ -2,9 +2,9 @@ using WuGing.VectorTileRenderer.Sources;
 
 namespace WuGing.VectorTileRenderer;
 
-public sealed class MbTilesCoverage(SingleMbTilesSource source, int priority)
+public sealed class MbTilesCoverage(SingleMbTilesSource source, int priority = 0)
 {
-    public SingleMbTilesSource Source { get; init; } = source;
+    public SingleMbTilesSource Source { get; init; } = source ?? throw new ArgumentNullException(nameof(source));
     public GlobalMercator.GeoExtent Bounds { get; init; } = source.Bounds;
     public int MinZoom { get; init; } = source.MinZoom;
     public int MaxZoom { get; init; } = source.MaxZoom;

@@ -263,31 +263,23 @@ public class GlobalMercator
 
     public static string QuadTree(int tx, int ty, int zoom)
     {
-        try
+        var result = new char[zoom];
+        ty = (1 << zoom) - 1 - ty;
+        for (var i = zoom; i >= 1; i--)
         {
-            string retval = "";
-            ty = (1 << zoom) - 1 - ty;
-            for (var i = zoom; i >= 1; i--)
-            {
-                var digit = 0;
+            var digit = 0;
+            var mask = 1 << (i - 1);
 
-                var mask = 1 << (i - 1);
+            if ((tx & mask) != 0)
+                digit += 1;
 
-                if ((tx & mask) != 0)
-                    digit += 1;
+            if ((ty & mask) != 0)
+                digit += 2;
 
-                if ((ty & mask) != 0)
-                    digit += 2;
-
-                retval += digit;
-            }
-
-            return retval;
+            result[zoom - i] = (char)('0' + digit);
         }
-        catch (Exception)
-        {
-            throw;
-        }
+
+        return new string(result);
     }
 
     public static TileAddress QuadTreeToTile(string quadtree, int zoom)

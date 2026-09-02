@@ -30,9 +30,11 @@ static class Utils
 
     public static string Sha256(string randomString)
     {
-        var crypt = System.Security.Cryptography.SHA256.Create();
-        var hash = new StringBuilder();
+        using var crypt = System.Security.Cryptography.SHA256.Create();
+        var hash = new StringBuilder(64);
+        #pragma warning disable CA1850 // for .netstandard2.0 support
         byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+        #pragma warning restore CA1850
         foreach (byte theByte in crypto)
         {
             hash.Append(theByte.ToString("x2"));

@@ -45,11 +45,11 @@ Vector tiles are a newer concept and behave similarly to SVG. Instead of sending
 
 ```C#
 // load style and fonts
-var style = new VectorTileRenderer.Style("basic-style.json");
+var style = new WuGing.VectorTileRenderer.Style("basic-style.json");
 style.FontDirectory = "styles/fonts/";
 
 // set pbf as tile provider
-var provider = new VectorTileRenderer.Sources.PbfTileSource("tile.pbf");
+var provider = new WuGing.VectorTileRenderer.Sources.PbfTileSource("tile.pbf");
 style.SetSourceProvider(0, provider);
 
 // render it on a skia canvas
@@ -64,11 +64,11 @@ imageView.Source = bitmap;
 
 ```C#
 // load style and fonts
-var style = new VectorTileRenderer.Style("bright-style.json");
+var style = new WuGing.VectorTileRenderer.Style("bright-style.json");
 style.FontDirectory = "styles/fonts/";
 
 // set mbtiles as tile provider
-var provider = new VectorTileRenderer.Sources.MbTilesSource("zurich.mbtiles");
+using var provider = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource("zurich.mbtiles");
 style.SetSourceProvider(0, provider);
 
 var zoom = 13;
@@ -88,15 +88,15 @@ imageView.Source = bitmap;
 
 ```C#
 // load style and fonts
-var style = new VectorTileRenderer.Style("hybrid-style.json");
+var style = new WuGing.VectorTileRenderer.Style("hybrid-style.json");
 style.FontDirectory = "styles/fonts/";
 
 // add vector tile
-var vectorProvider = new VectorTileRenderer.Sources.PbfTileSource(@"tiles/zurich.pbf.gz");
+var vectorProvider = new WuGing.VectorTileRenderer.Sources.PbfTileSource(@"tiles/zurich.pbf.gz");
 style.SetSourceProvider(0, vectorProvider);
 
 // add raster satellite tile
-var rasterProvider = new VectorTileRenderer.Sources.RasterTileSource(@"tiles/zurich.jpg");
+var rasterProvider = new WuGing.VectorTileRenderer.Sources.RasterTileSource(@"tiles/zurich.jpg");
 style.SetSourceProvider("satellite", rasterProvider);
 
 // render it on a skia canvas
@@ -108,6 +108,40 @@ imageView.Source = bitmap;
 ```
 
  ![](images/hybrid.png)
+
+### Loading multiple MBTiles regions through one source
+
+`CompositeMbTilesSource` uses each database's metadata bounds and zoom range to
+route a request. If multiple databases cover the same tile, explicit priority,
+native zoom availability, and then the smallest coverage area determine the
+lookup order. A missing tile falls through to the next candidate.
+
+```C#
+using var provider = new WuGing.VectorTileRenderer.Sources.CompositeMbTilesSource(
+[
+    @"tiles/zurich.mbtiles",
+    @"tiles/islamabad.mbtiles"
+]);
+
+var style = new WuGing.VectorTileRenderer.Style(@"styles/basic-style.json");
+style.SetSourceProvider("openmaptiles", provider);
+```
+
+Use `MbTilesCoverage` when overlapping sources need an explicit priority:
+
+```C#
+using var local = new SingleMbTilesSource(@"tiles/local.mbtiles");
+using var regional = new SingleMbTilesSource(@"tiles/regional.mbtiles");
+using var provider = new CompositeMbTilesSource(
+[
+    new MbTilesCoverage(local, priority: 100),
+    new MbTilesCoverage(regional, priority: 0)
+], disposeSources: false);
+```
+
+The static WPF demo includes Zurich and Islamabad composite examples using the
+checked-in databases. Those validate switching between separate regional packs;
+an adjoining-region fixture is still needed for visual seam testing.
 
 ## Vector Map in Mapsui and GMap .NET
 
@@ -191,6 +225,31 @@ Notes:
 ## Contribution
 
 The project has strong potential and would benefit from ongoing contributions. Bug reports, suggestions, and pull requests are all welcome. Please submit them through the [GitHub issue tracker](https://github.com/WuGing/VectorTileRenderer/issues).
+
+### Validation and performance work
+
+Run the NUnit regression suite with:
+
+```powershell
+dotnet test VectorTileRenderer.Tests/VectorTileRenderer.Tests.csproj -c Release
+```
+
+The MBTiles regression tests generate small synthetic databases at runtime from
+project-authored vector geometry. They do not require downloaded map data.
+
+For broader real-world validation, place legally acquired `.mbtiles` files in
+`tiles/real/`. That directory's datasets are ignored by Git; see
+[`tiles/real/README.md`](tiles/real/README.md) for the licensing and attribution
+expectations. The project does not endorse or require a particular data vendor.
+The fuller policy and existing-asset audit are recorded in
+[`docs/test-data-licensing.md`](docs/test-data-licensing.md).
+
+Performance experiments are isolated from the library and normal test runs in
+`VectorTileRenderer.Benchmarks`. Run all BenchmarkDotNet cases with:
+
+```powershell
+dotnet run --project VectorTileRenderer.Benchmarks -c Release
+```
 
 ## License
 
