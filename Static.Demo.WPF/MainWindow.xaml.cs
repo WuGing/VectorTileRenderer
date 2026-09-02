@@ -124,12 +124,6 @@ namespace Demo.WPF
                 512);
         }
 
-        Task guangzhouMbTilesAliFluxStyle()
-        {
-            //showMbTiles(mainDir + @"tiles/guangzhou.mbtiles", mainDir + @"styles/aliflux-style.json", 416, 288, 418, 290, 9, 512);
-            return showMbTiles(@"F:\AliData\C#\FlightMapper\FlightMapper\bin\Debug\tiles\asia.mbtiles", mainDir + @"styles/aliflux-style.json", 368, 311, 373, 313, 9, 512);
-        }
-
         Task zurichPbfBasicStyle()
         {
             return showPbf(mainDir + @"tiles/zurich.pbf.gz", mainDir + @"styles/basic-style.json", 14);
