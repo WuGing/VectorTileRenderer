@@ -33,11 +33,13 @@ public class TileSourceTests
     }
 
     [Test]
-    public void PbfTileSource_Throws_WhenTileDataIsCorrupt()
+    public async Task PbfTileSource_Throws_WhenTileDataIsCorrupt()
     {
         var source = new PbfTileSource(new MemoryStream([0x01, 0x02, 0x03, 0x04]));
 
-        Assert.That(async () => await source.GetVectorTile(0, 0, 0), Throws.Exception);
+        await Assert.ThatAsync(
+            async () => await source.GetVectorTile(0, 0, 0),
+            Throws.Exception);
     }
 
     [Test]
