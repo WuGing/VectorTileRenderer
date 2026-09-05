@@ -20,7 +20,7 @@ The library includes most of the components needed to build a map application:
 - Support for basic satellite and hybrid satellite raster tiles
 - Plug-and-play support for multiple rendering engines
 - Compatible with the [Mapbox/OpenMapTiles vector tile specification](https://www.mapbox.com/vector-tiles/specification/)
-- Supports the [Mapbox style specification](https://www.mapbox.com/mapbox-gl-js/style-spec/)
+- Supports a subset of the [Mapbox style specification](https://www.mapbox.com/mapbox-gl-js/style-spec/); see the [compatibility investigation](docs/02_Investigation/Findings/F-005.md)
 - Stress free MIT License
 
 ![](images/zurich-basic.png) ![](images/zurich-bright.png) ![](images/zurich-light.png)
@@ -185,6 +185,10 @@ The entire project, including demos, integrations, and optimization techniques, 
 - There is no mechanism yet to purge old cache entries in the `tiles-cache` directory.
 - Rendering is SkiaSharp-based and mostly CPU-driven, so tile loading may show some lag.
 
+See the [investigation and prioritized work plan](docs/02_Investigation/Review-Plan.md)
+for code evidence, missing symbol/style behavior, cache and resource-lifetime risks,
+and [historical upstream issue triage](docs/02_Investigation/GitHub-Tracking.md).
+
 ## GPU powered vector map drawing
 
 Rendering is currently SkiaSharp-based, with CPU as the most reliable default path.
@@ -193,7 +197,7 @@ The project now includes an experimental dual backend (`Cpu`, `Gpu`, `Auto`) so 
 
 Important context:
 
-- In this project, tile fetch/decode/style evaluation is often the dominant cost, not just draw calls.
+- Tile fetch/decode/style evaluation can dominate total cost; measure the actual workload before attributing latency to drawing.
 - The current pipeline returns `SKBitmap` tiles, so GPU paths still perform a readback step before returning.
 - Because of those constraints, GPU mode is currently best treated as opportunistic rather than guaranteed faster.
 
@@ -205,13 +209,13 @@ The renderer now supports selecting CPU or GPU canvas at runtime:
 
 ```C#
 // CPU only
-var cpuCanvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Cpu);
+var cpuCanvas = WuGing.VectorTileRenderer.CanvasFactory.Create(WuGing.VectorTileRenderer.RenderBackend.Cpu);
 
 // GPU preferred, falls back to CPU when no GPU context is available
-var gpuCanvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Gpu);
+var gpuCanvas = WuGing.VectorTileRenderer.CanvasFactory.Create(WuGing.VectorTileRenderer.RenderBackend.Gpu);
 
 // Auto: try GPU first, then CPU fallback
-var autoCanvas = VectorTileRenderer.CanvasFactory.Create(VectorTileRenderer.RenderBackend.Auto);
+var autoCanvas = WuGing.VectorTileRenderer.CanvasFactory.Create(WuGing.VectorTileRenderer.RenderBackend.Auto);
 ```
 
 Notes:
@@ -221,6 +225,12 @@ Notes:
 - For offline tile generation and background workers, `Cpu` is generally the safest default.
 - `Auto` probes GPU availability and falls back to CPU when unavailable.
 - For production use today, benchmark your own workload and keep CPU as the baseline.
+
+The factory does not create a native host OpenGL context. `Auto` caches its first
+availability probe globally, and the current GPU readback does not check success.
+GPU correctness and performance were not runtime-validated in the September 2026
+audit. See the [GPU validation matrix and alternative engines](docs/03_Target-State/Backend-Investigation.md)
+before relying on this mode or choosing a replacement for SkiaSharp.
 
 ## Contribution
 
