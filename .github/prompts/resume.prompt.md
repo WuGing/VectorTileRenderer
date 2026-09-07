@@ -1,6 +1,17 @@
 ---
 name: resume
-description: resume for VectorTileRenderer
+description: Resume architecture investigation from persistent project memory
 ---
 
-Read AGENTS.md, docs/README.md, relevant user priorities/concerns, docs/02_Investigation/Review-Plan.md, the latest docs/Handoffs entry and relevant architecture records. Summarize confirmed findings, unresolved claims and the next useful validation. Check GitNexus freshness before code exploration. Do not implement changes yet.
+Read:
+- /docs/02_Investigation/Review-Plan.md
+- the most recent file in /docs/Handoffs
+- any relevant files in /docs/01_Architecture
+
+Then summarize:
+1. where we left off
+2. current findings
+3. open questions
+4. the next best investigation target
+
+Do not make code changes yet.
