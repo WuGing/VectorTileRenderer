@@ -12,6 +12,14 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.FirstOrDefault() == "--label-timing")
+        {
+            return LabelTiming.Run(args.Skip(1).ToArray());
+        }
+        if (args.FirstOrDefault() == "--labels")
+        {
+            return LabelValidation.Run(args.Skip(1).ToArray());
+        }
         if (args.FirstOrDefault() == "--parity")
         {
             return ParityInvestigation.Run(args.Skip(1).ToArray());

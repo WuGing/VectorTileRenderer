@@ -471,68 +471,42 @@ public class SkiaCanvas : ICanvas
         var text = TransformText(style.Text, style, paint, font);
         var allLines = text.Split('\n');
 
-        //paint.Typeface = QualifyTypeface(text, paint.Typeface);
-
-        // detect collisions
-        if (allLines.Length > 0)
+        var positions = new SKPoint[allLines.Length];
+        var labelBounds = SKRect.Empty;
+        var hasInk = false;
+        for (var i = 0; i < allLines.Length; i++)
         {
-            var biggestLine = allLines.OrderBy(line => line.Length).Last();
-            var width = (int)font.MeasureText(biggestLine, paint);
-            int left = (int)(geometry.X - width / 2);
-            int top = (int)(geometry.Y - style.Paint.TextSize / 2 * allLines.Length);
-            int height = (int)(style.Paint.TextSize * allLines.Length);
-
-            var rectangle = new Rect(left, top, width, height);
-            rectangle.Inflate(5, 5);
-
-            if (ClipOverflow)
-            {
-                if (!clipRectangle.Contains(rectangle))
-                {
-                    return;
-                }
-            }
-
-            if (TextCollides(rectangle))
-            {
-                // collision detected
-                return;
-            }
-            textRectangles.Add(rectangle);
-
-            //var list = new List<Point>()
-            //{
-            //    rectangle.TopLeft,
-            //    rectangle.TopRight,
-            //    rectangle.BottomRight,
-            //    rectangle.BottomLeft,
-            //};
-
-            //var brush = new Brush();
-            //brush.Paint = new Paint();
-            //brush.Paint.FillColor = Color.FromArgb(150, 255, 0, 0);
-
-            //this.DrawPolygon(list, brush);
+            var lineOffset = (i - allLines.Length / 2f + 1) * (float)style.Paint.TextSize;
+            positions[i] = new SKPoint(
+                (float)(geometry.X + style.Paint.TextOffset.X * style.Paint.TextSize),
+                (float)(geometry.Y + style.Paint.TextOffset.Y * style.Paint.TextSize) + lineOffset);
+            var advance = font.MeasureText(allLines[i], out var bounds, paint);
+            if (bounds.IsEmpty) continue;
+            var alignmentOffset = textAlign == SKTextAlign.Center ? advance / 2
+                : textAlign == SKTextAlign.Right ? advance : 0;
+            bounds.Offset(positions[i].X - alignmentOffset, positions[i].Y);
+            labelBounds = hasInk ? SKRect.Union(labelBounds, bounds) : bounds;
+            hasInk = true;
         }
+        if (!hasInk) return;
 
-        int i = 0;
-        foreach (var line in allLines)
+        // Include halo and antialiasing at every zoom, not only overzoom.
+        // These are the same baselines, alignment and offsets used for drawing.
+        labelBounds.Inflate((float)Math.Abs(style.Paint.TextStrokeWidth) / 2 + 1,
+            (float)Math.Abs(style.Paint.TextStrokeWidth) / 2 + 1);
+        var rectangle = new Rect(labelBounds.Left, labelBounds.Top, labelBounds.Width, labelBounds.Height);
+        if (!new Rect(0, 0, width, height).Contains(rectangle)) return;
+        rectangle.Inflate(5, 5);
+        if (TextCollides(rectangle)) return;
+        textRectangles.Add(rectangle);
+
+        for (var i = 0; i < allLines.Length; i++)
         {
-            float lineOffset = (float)(i * style.Paint.TextSize)
-                - allLines.Length
-                * (float)style.Paint.TextSize
-                / 2
-                + (float)style.Paint.TextSize;
-            var position = new SKPoint((float)geometry.X + (float)(style.Paint.TextOffset.X * style.Paint.TextSize),
-                                        (float)geometry.Y + (float)(style.Paint.TextOffset.Y * style.Paint.TextSize) + lineOffset);
-
             if (style.Paint.TextStrokeWidth != 0)
             {
-                canvas.DrawText(line, position, textAlign, strokeFont, strokePaint);
+                canvas.DrawText(allLines[i], positions[i], textAlign, strokeFont, strokePaint);
             }
-
-            canvas.DrawText(line, position, textAlign, font, paint);
-            i++;
+            canvas.DrawText(allLines[i], positions[i], textAlign, font, paint);
         }
     }
 
@@ -546,29 +520,57 @@ public class SkiaCanvas : ICanvas
         return distance;
     }
 
-    private static bool CheckPathSqueezing(List<Point> path)
+    // Linear scan with no glyph-placement search. Partition at sharp turns or
+    // excessive total bending, then retain the least-bent section that fits.
+    private static List<Point> SelectLabelSection(List<Point> road, double requiredLength)
     {
+        var start = 0;
+        var bestStart = -1;
+        var bestEnd = -1;
+        var bestBend = double.MaxValue;
+        var bestLength = 0d;
+        var length = 0d;
+        var bend = 0d;
         double? previousAngle = null;
-        for (var i = 1; i < path.Count; i++)
+
+        void Consider(int end)
         {
-            var vector = path[i] - path[i - 1];
-            if (vector.X == 0 && vector.Y == 0)
+            if (length >= requiredLength && (bend < bestBend || (bend == bestBend && length > bestLength)))
+            {
+                bestStart = start;
+                bestEnd = end;
+                bestBend = bend;
+                bestLength = length;
+            }
+        }
+
+        for (var i = 1; i < road.Count; i++)
+        {
+            var vector = road[i] - road[i - 1];
+            var segmentLength = vector.Length;
+            if (segmentLength == 0)
             {
                 continue;
             }
             var angle = Math.Atan2(vector.Y, vector.X);
-            if (previousAngle.HasValue)
+            var difference = previousAngle.HasValue ? angle - previousAngle.Value : 0;
+            var turn = Math.Abs(Math.Atan2(Math.Sin(difference), Math.Cos(difference)));
+            if (turn > Math.PI / 12 || bend + turn > 35 * Math.PI / 180)
             {
-                var difference = angle - previousAngle.Value;
-                var turn = Math.Abs(Math.Atan2(Math.Sin(difference), Math.Cos(difference)));
-                if (turn > Math.PI / 3)
-                {
-                    return true;
-                }
+                Consider(i - 1);
+                start = i - 1;
+                length = 0;
+                bend = 0;
             }
+            else
+            {
+                bend += turn;
+            }
+            length += segmentLength;
             previousAngle = angle;
         }
-        return false;
+        Consider(road.Count - 1);
+        return bestStart < 0 ? null : road.GetRange(bestStart, bestEnd - bestStart + 1);
     }
 
     private void DebugRectangle(Rect rectangle, Color color)
@@ -594,89 +596,86 @@ public class SkiaCanvas : ICanvas
 
     public void DrawTextOnPath(List<Point> geometry, Brush style)
     {
-        // ClipLine returns a new list; keep the caller's road geometry unchanged.
-        geometry = ClipLine(geometry);
-        if (geometry == null || geometry.Count < 2)
-        {
-            return;
-        }
-
-        // Read left to right; exactly vertical labels read bottom to top.
-        var first = geometry[0];
-        var last = geometry[geometry.Count - 1];
-        if (first.X > last.X || (first.X == last.X && first.Y < last.Y))
-        {
-            geometry.Reverse();
-        }
-
-        using var path = GetPathFromGeometry(geometry);
         var textPaint = GetTextPaint(style);
         var textFont = GetTextFont(style);
         QualifyTypeface(style, textFont);
-        var strokePaint = GetTextStrokePaint(style);
-        var strokeFont = GetTextFont(style, textFont.Typeface);
-        var pathTextAlign = SKTextAlign.Left;
         var text = TransformTextSingleLine(style.Text, style);
-
         if (string.IsNullOrWhiteSpace(text))
         {
             return;
         }
 
         var textWidth = textFont.MeasureText(text, textPaint);
+        var offset = new SKPoint((float)style.Paint.TextOffset.X, (float)style.Paint.TextOffset.Y);
+        var margin = (float)Math.Abs(style.Paint.TextStrokeWidth) / 2 + 1;
         if (textWidth <= 0)
         {
             return;
         }
 
-        var pathSqueezed = CheckPathSqueezing(geometry);
-
-        if (pathSqueezed)
+        // A road that leaves and re-enters the tile has separate visible runs.
+        // Never invent a connecting segment between those runs.
+        foreach (var run in ClipLabelRuns(geometry).OrderByDescending(GetPathLength))
         {
+            var first = run[0];
+            var last = run[run.Count - 1];
+            if (first.X > last.X || (first.X == last.X && first.Y < last.Y))
+            {
+                run.Reverse();
+            }
+
+            var section = SelectLabelSection(run, textWidth + 2 * (Math.Abs(offset.X) + margin));
+            if (section == null)
+            {
+                continue;
+            }
+            using var path = GetPathFromGeometry(section);
+            // Position rigid glyphs at road tangents; DrawTextOnPath's default
+            // warps glyph outlines and can severely deform letters on curves.
+            using var label = SKTextBlob.CreatePathPositioned(text, textFont, path, SKTextAlign.Center, offset);
+            if (label == null)
+            {
+                continue;
+            }
+            var bounds = label.Bounds;
+            bounds.Inflate(margin, margin);
+            var rectangle = new Rect(bounds.Left, bounds.Top, bounds.Width, bounds.Height);
+            if (!new Rect(0, 0, width, height).Contains(rectangle) || TextCollides(rectangle))
+            {
+                continue;
+            }
+
+            textRectangles.Add(rectangle);
+            if (style.Paint.TextStrokeWidth != 0)
+            {
+                canvas.DrawText(label, 0, 0, GetTextStrokePaint(style));
+            }
+            canvas.DrawText(label, 0, 0, textPaint);
             return;
         }
+    }
 
-        //text += " : " + bending.ToString("F");
-
-        var bounds = path.Bounds;
-
-        var left = bounds.Left - style.Paint.TextSize;
-        var top = bounds.Top - style.Paint.TextSize;
-        var right = bounds.Right + style.Paint.TextSize;
-        var bottom = bounds.Bottom + style.Paint.TextSize;
-
-        var rectangle = new Rect(left, top, right - left, bottom - top);
-
-        if (TextCollides(rectangle))
+    private IEnumerable<List<Point>> ClipLabelRuns(List<Point> geometry)
+    {
+        List<Point> run = null;
+        for (var i = 1; i < geometry.Count; i++)
         {
-            //DebugRectangle(rectangle, Color.FromArgb(128, 100, 255, 100));
-            // collides with other
-            return;
+            var segment = LineClipper.ClipSegment(clipRectangle, geometry[i - 1], geometry[i]);
+            if (segment == null)
+            {
+                if (run != null) yield return run;
+                run = null;
+                continue;
+            }
+            if (segment.Item1 == segment.Item2) continue;
+            if (run == null || run[run.Count - 1] != segment.Item1)
+            {
+                if (run != null) yield return run;
+                run = new List<Point> { segment.Item1 };
+            }
+            run.Add(segment.Item2);
         }
-        textRectangles.Add(rectangle);
-
-        //DebugRectangle(rectangle, Color.FromArgb(150, 255, 0, 0));
-
-        if (style.Text.Length * style.Paint.TextSize * 0.2 >= GetPathLength(geometry))
-        {
-            // exceeds estimated path length
-            return;
-        }
-
-        var horizontalOffset = (float)style.Paint.TextOffset.X;
-        var verticalOffset = (float)style.Paint.TextOffset.Y;
-
-        if (style.Paint.TextStrokeWidth != 0)
-        {
-            // TODO implement this func custom way...
-            canvas.DrawTextOnPath(text, path, horizontalOffset, verticalOffset, pathTextAlign, strokeFont, strokePaint);
-        }
-
-        canvas.DrawTextOnPath(text, path, horizontalOffset, verticalOffset, pathTextAlign, textFont, textPaint);
-
-
-        //canvas.DrawText(Encoding.UTF32.GetBytes(bending.ToString("F")), new SKPoint((float)left + 10, (float)top + 10), GetTextStrokePaint(style));
-        //canvas.DrawText(Encoding.UTF32.GetBytes(bending.ToString("F")), new SKPoint((float)left + 10, (float)top + 10), GetTextPaint(style));
+        if (run != null) yield return run;
     }
 
     public void DrawPoint(Point geometry, Brush style)
@@ -732,15 +731,13 @@ public class SkiaCanvas : ICanvas
         }
 
         imageStream.Position = 0;
-        using (var image = SKBitmap.Decode(imageStream))
+        using var image = SKBitmap.Decode(imageStream);
+        if (image == null)
         {
-            if (image == null)
-            {
-                return;
-            }
-
-            canvas.DrawBitmap(image, new SKRect(0, 0, width, height));
+            return;
         }
+
+        canvas.DrawBitmap(image, new SKRect(0, 0, width, height));
     }
 
     public void DrawUnknown(List<List<Point>> geometry, Brush style)

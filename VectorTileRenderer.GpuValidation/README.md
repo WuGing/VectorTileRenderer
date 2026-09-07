@@ -121,3 +121,20 @@ macOS/Metal and actual device removal remain separate validation work.
 See [the measured report](../docs/02_Investigation/Gpu-Validation-2026-09-05.md).
 The [Colorado report](../docs/02_Investigation/Gpu-Colorado-2026-09-05.md) covers the
 larger developer-local MBTiles experiment.
+
+## Road-label visual matrix
+
+`dotnet run --project VectorTileRenderer.GpuValidation -c Release -- --labels . artifacts/road-labels-after`
+
+Renders fresh 3x3 Zurich grids using the Mapsui center, basic/bright styles,
+zooms 12/14/16, CPU and verified GPU readback. Requires the existing Zurich sample,
+bundled fonts and the same Windows GPU host as the other experiments. Outputs
+PNGs and hardware/tile metadata; visually inspect the images. Exit zero proves
+completion, not automated text quality or CPU/GPU pixel parity. See the
+[production fix report](../docs/02_Investigation/Road-Label-Corruption-2026-09-06.md).
+
+## Bounded placement timing
+
+`--label-timing <root> <output> <mbtiles> [iterations=30] [workload-name-filter] [size]` measures complete CPU requests on the largest compressed native tiles at zooms 10, 12 and maximum. Five warmups precede individual request/text/decode timings. Final images are saved outside timing. Warm/fresh providers are separate; OS caches are uncontrolled. Run before/after binaries sequentially without competing builds.
+
+The `--labels` matrix now includes zoom 18 and accepts optional latitude/longitude after the output directory. See the [placement report](../docs/02_Investigation/Road-Placement-2026-09-06.md).

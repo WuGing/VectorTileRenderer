@@ -91,6 +91,40 @@ public class RendererTests
         }
     }
 
+    [TestCase(0)]
+    [TestCase(2)]
+    [TestCase(3)]
+    public async Task RenderCached_IgnoresTilesFromBeforeLabelPlacementFix(int renderVersion)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var cachePath = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"legacy-cache-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(cachePath);
+        object legacyBundle = renderVersion > 0
+            ? new { RenderVersion = renderVersion, style.Hash, sizeX = 256d, sizeY = 256d, scale = 1d, layerString = "" }
+            : new { style.Hash, sizeX = 256d, sizeY = 256d, scale = 1d, layerString = "" };
+        var legacyKey = System.Text.Json.JsonSerializer.Serialize(legacyBundle);
+        var legacyPath = Path.Combine(cachePath, "1x2-8-" + Utils.Sha256(legacyKey).Substring(0, 12) + ".png");
+        using (var oldBitmap = new SKBitmap(1, 1))
+        using (var data = oldBitmap.Encode(SKEncodedImageFormat.Png, 100))
+        {
+            File.WriteAllBytes(legacyPath, data.ToArray());
+        }
+        // A fresh render throws; loading the legacy PNG would incorrectly succeed.
+        var canvas = new RecordingCanvas { FinishFailure = new InvalidOperationException("Fresh render") };
+        try
+        {
+            await Assert.ThatAsync(() => Renderer.RenderCached(cachePath, style, canvas, 1, 2, 8, 256, 256),
+                Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo("Fresh render"));
+            Assert.That(canvas.FinishCalled, Is.True);
+        }
+        finally
+        {
+            File.Delete(legacyPath);
+            Directory.Delete(cachePath);
+        }
+    }
+
     private static Style CreateLineStyle()
     {
         var path = TestAssets.WriteTemporaryStyle("""
