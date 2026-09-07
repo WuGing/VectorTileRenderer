@@ -57,3 +57,5 @@ The alternative-backend experiment is paused.
 Bright follow-up: [point-label edge cleanup](Label-Edges-2026-09-06.md) validated with 63 tests and 108 fresh tiles. Whole labels are omitted when they cannot fit; coordinated cross-tile placement remains future work.
 
 [Bounded road-label placement](Road-Placement-2026-09-06.md) validated locally: 66 tests, close-up CPU/GPU Zurich grids and Colorado timings. Next validate interactively; cross-tile placement and Unicode remain.
+
+[Preview.6 packaging handoff](../Handoffs/2026-09-06-preview6-release.md): updated version/release notes and fixed NuGet release-note encoding in CI. Package metadata verified locally; publication pending.
