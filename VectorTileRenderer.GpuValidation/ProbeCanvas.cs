@@ -41,11 +41,19 @@ internal sealed class ProbeCanvas(GRContext? context) : SkiaGpuCanvas(context), 
 
     // The harness retains canvases between requests and owns their output bitmaps.
     // GRContext is borrowed and disposed by the host after all surfaces.
+    private SKBitmap? completed;
+
+    public override SKBitmap FinishDrawing() => completed = base.FinishDrawing();
+
     private void ReleaseSurface()
     {
-        surface?.Dispose();
-        bitmap?.Dispose();
+        completed?.Dispose();
+        completed = null;
     }
 
-    public void Dispose() => ReleaseSurface();
+    protected override void Dispose(bool disposing)
+    {
+        ReleaseSurface();
+        base.Dispose(disposing);
+    }
 }

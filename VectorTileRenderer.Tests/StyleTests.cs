@@ -5,6 +5,27 @@ namespace VectorTileRenderer.Tests;
 [TestFixture]
 public class StyleTests
 {
+    [TestCase("en-US")]
+    [TestCase("de-DE")]
+    [TestCase("fr-FR")]
+    [NonParallelizable]
+    public void ParseStyle_UsesInvariantNumericColors(string locale)
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+            foreach (var color in new[] { "rgba(100,150,200,0.5)", "hsla(210.0,50%,50%,0.5)" })
+            {
+                var path = TestAssets.WriteTemporaryStyle("{\"layers\":[{\"id\":\"test\",\"type\":\"line\",\"paint\":{\"line-color\":\"" + color + "\"}}]}");
+                var style = new Style(path);
+                var brush = style.ParseStyle(style.Layers[0], 1, new Dictionary<string, object>());
+                Assert.That(brush.Paint.LineColor.A, Is.EqualTo(127), color);
+            }
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = previous; }
+    }
+
     [Test]
     public void Constructor_LoadsCheckedInStyleAndProducesStableHash()
     {

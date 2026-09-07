@@ -121,7 +121,7 @@ public class PathLabelTests
                     TextStrokeColor = Color.FromArgb(255, 255, 255, 255), TextStrokeWidth = 1
                 }
             });
-            return renderer.FinishDrawing().Copy();
+            return renderer.FinishDrawing();
         }
         finally { renderer.Release(); }
     }
@@ -130,8 +130,7 @@ public class PathLabelTests
     {
         public void Release()
         {
-            surface?.Dispose();
-            bitmap?.Dispose();
+            Dispose();
         }
     }
 }

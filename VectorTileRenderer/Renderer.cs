@@ -73,7 +73,7 @@ public class Renderer
         var bundle = new
         {
             // Invalidate PNGs generated with the old, warped/partial labels.
-            RenderVersion = 4,
+            RenderVersion = 5,
             style.Hash,
             sizeX,
             sizeY,
@@ -105,32 +105,33 @@ public class Renderer
 
         var bitmap = await Render(style, canvas, x, y, z, sizeX, sizeY, scale, whiteListLayers);
 
-        // save to file in async fashion
-        var _t = Task.Run(() =>
+        // Complete encoding before returning the caller-owned bitmap. Publish a
+        // complete file atomically; an optional cache failure must not lose a render.
+        if (bitmap != null)
         {
-            if (bitmap != null)
+            var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
             {
-                try
+                using (var image = SKImage.FromBitmap(bitmap))
+                using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+                using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
-                    lock (cacheLock)
-                    {
-                        if (File.Exists(path))
-                        {
-                            return;
-                        }
-
-                        using var fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite);
-                        using var image = SKImage.FromBitmap(bitmap);
-                        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-                        data.SaveTo(fileStream);
-                    }
+                    data.SaveTo(stream);
                 }
-                catch (Exception)
+                lock (cacheLock)
                 {
-                    return;
+                    if (!File.Exists(path)) File.Move(temporaryPath, path);
                 }
             }
-        });
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            finally
+            {
+                try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
 
         return bitmap;
     }
@@ -170,7 +171,7 @@ public class Renderer
             buildStart = totalStart;
         }
 
-        Dictionary<Source, Stream> rasterTileCache = [];
+        using var rasterTileCache = new RasterStreams();
         Dictionary<Source, VectorTile> vectorTileCache = [];
         Dictionary<string, List<VectorTileLayer>> categorizedVectorLayers = [];
         Dictionary<VectorTileLayer, Dictionary<string, List<VectorTileFeature>>> tileLayerGeometryBuckets = [];
@@ -585,7 +586,7 @@ public class Renderer
             else if (layer.Type == VisualLayerType.Raster)
             {
                 canvas.DrawImage(layer.RasterStream, layer.Brush);
-                layer.RasterStream.Close();
+
             }
         }
 
@@ -676,6 +677,16 @@ public class Renderer
         }
 
         return bitmap;
+    }
+
+    // Own provider streams for the whole request, including shared raster layers
+    // and early-return/exception paths.
+    private sealed class RasterStreams : Dictionary<Source, Stream>, IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (var stream in Values.Distinct()) stream?.Dispose();
+        }
     }
 
     private static bool IsGeometryCompatibleWithLayer(string layerType, string geometryType)

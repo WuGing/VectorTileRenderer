@@ -24,5 +24,6 @@ public interface ICanvas
 
     void DrawUnknown(List<List<Point>> geometry, Brush style);
 
+    /// <summary>Returns a completed bitmap owned by the caller. Dispose it after use.</summary>
     SKBitmap FinishDrawing();
 }

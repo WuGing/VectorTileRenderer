@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace WuGing.VectorTileRenderer;
 
-public class SkiaCanvas : ICanvas
+public class SkiaCanvas : ICanvas, IDisposable
 {
     protected int width;
     protected int height;
@@ -22,8 +22,37 @@ public class SkiaCanvas : ICanvas
 
     private readonly List<Rect> textRectangles = [];
 
+    private bool disposed;
+
+    private void ReleaseDrawing()
+    {
+        surface?.Dispose();
+        surface = null;
+        canvas = null;
+        bitmap?.Dispose();
+        bitmap = null;
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposed) return;
+        ReleaseDrawing();
+        foreach (var font in fontPairs.Values.Concat(fallbackFonts.Values).Distinct()) font.Dispose();
+        fallbackFonts.Clear();
+        fontPairs.Clear();
+        disposed = true;
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
     public virtual void StartDrawing(double width, double height)
     {
+        if (disposed) throw new ObjectDisposedException(nameof(SkiaCanvas));
+        ReleaseDrawing();
         this.width = (int)width;
         this.height = (int)height;
 
@@ -186,13 +215,13 @@ public class SkiaCanvas : ICanvas
             }
         }
 
-        var path = GetPathFromGeometry(geometry);
+        using var path = GetPathFromGeometry(geometry);
         if (path == null)
         {
             return;
         }
 
-        SKPaint fillPaint = new()
+        using SKPaint fillPaint = new()
         {
             Style = SKPaintStyle.Stroke,
             StrokeCap = ConvertCap(style.Paint.LineCap),
@@ -203,7 +232,7 @@ public class SkiaCanvas : ICanvas
 
         if (style.Paint.LineDashArray.Length > 0)
         {
-            var effect = SKPathEffect.CreateDash([.. style.Paint.LineDashArray.Select(n => (float)n)], 0);
+            using var effect = SKPathEffect.CreateDash([.. style.Paint.LineDashArray.Select(n => (float)n)], 0);
             fillPaint.PathEffect = effect;
         }
 
@@ -367,7 +396,8 @@ public class SkiaCanvas : ICanvas
         {
             foreach (var name in familyNames)
             {
-                if (fontPairs.TryGetValue(name, out var typeface))
+                var key = style.GlyphsDirectory + "|" + name;
+                if (fontPairs.TryGetValue(key, out var typeface))
                 {
                     return typeface;
                 }
@@ -378,7 +408,7 @@ public class SkiaCanvas : ICanvas
                     var newType = SKTypeface.FromFile(Path.Combine(style.GlyphsDirectory, name + ".ttf"));
                     if (newType != null)
                     {
-                        fontPairs[name] = newType;
+                        fontPairs[key] = newType;
                         return newType;
                     }
 
@@ -386,7 +416,7 @@ public class SkiaCanvas : ICanvas
                     newType = SKTypeface.FromFile(Path.Combine(style.GlyphsDirectory, name + ".otf"));
                     if (newType != null)
                     {
-                        fontPairs[name] = newType;
+                        fontPairs[key] = newType;
                         return newType;
                     }
                 }
@@ -395,61 +425,115 @@ public class SkiaCanvas : ICanvas
                 if (typeface.FamilyName == name)
                 {
                     // gotcha!
-                    fontPairs[name] = typeface;
+                    fontPairs[key] = typeface;
                     return typeface;
                 }
+                typeface.Dispose();
             }
 
             // all options exhausted...
             // get the first one
             var fallback = SKTypeface.FromFamilyName(familyNames.First());
-            fontPairs[familyNames.First()] = fallback;
+            fontPairs[style.GlyphsDirectory + "|" + familyNames.First()] = fallback;
             return fallback;
         }
     }
 
-    private static SKTypeface QualifyTypeface(string text, SKTypeface typeface)
-    {
-        var glyphs = new ushort[typeface.CountGlyphs(text)];
-        if (glyphs.Length < text.Length)
-        {
-            var fm = SKFontManager.Default;
-            return fm.MatchCharacter(text[glyphs.Length]);
-        }
+    private readonly Dictionary<string, SKTypeface> fallbackFonts = new();
 
-        return typeface;
+    internal static bool NeedsComplexLayout(string text, SKFont font) =>
+        text.Any(c => c > 0xFF) || !font.ContainsGlyphs(text);
+
+    private SKTypeface ResolveTextElement(string element, SKFont primary, Brush style)
+    {
+        if (primary.ContainsGlyphs(element)) return primary.Typeface;
+        var key = style.GlyphsDirectory + "|" + string.Join("|", style.Paint.TextFont) + "|" + element;
+        if (fallbackFonts.TryGetValue(key, out var cached)) return cached;
+        foreach (var family in style.Paint.TextFont.Skip(1))
+        {
+            var face = GetFont(new[] { family }, style);
+            using var font = new SKFont(face);
+            if (font.ContainsGlyphs(element))
+            {
+                fallbackFonts[key] = face;
+                return face;
+            }
+        }
+        for (var i = 0; i < element.Length; i++)
+        {
+            var codepoint = char.IsSurrogatePair(element, i) ? char.ConvertToUtf32(element, i++) : element[i];
+            var face = SKFontManager.Default.MatchCharacter(codepoint);
+            if (face == null) continue;
+            using var font = new SKFont(face);
+            if (font.ContainsGlyphs(element))
+            {
+                fallbackFonts[key] = face;
+                return face;
+            }
+            face.Dispose();
+        }
+        // Preserve the entire cluster, including .notdef if no installed font
+        // covers it. Missing font data is not permission to truncate user text.
+        fallbackFonts[key] = primary.Typeface;
+        return primary.Typeface;
     }
 
-    private static void QualifyTypeface(Brush style, SKFont font)
+    private TextLayout LayoutText(string text, SKFont primary, Brush style) =>
+        new TextLayout(text, primary.Size, element => ResolveTextElement(element, primary, style));
+
+    private void DrawComplexText(Point geometry, Brush style, SKFont font, SKPaint paint, SKPaint halo)
     {
-        var typeface = font.Typeface;
-        if (typeface == null)
+        var lines = new List<TextLayout>();
+        var placements = new List<PlacedText>();
+        try
         {
-            return;
+            var transformed = ApplyTextTransform(style.Text, style);
+            foreach (var paragraph in transformed.Split('\n'))
+            {
+                var current = "";
+                foreach (var word in System.Text.RegularExpressions.Regex.Split(paragraph, @"(?<=\s)"))
+                {
+                    using var candidate = LayoutText(current + word, font, style);
+                    if (current.Length > 0 && candidate.Width > style.Paint.TextMaxWidth * style.Paint.TextSize)
+                    {
+                        lines.Add(LayoutText(current, font, style));
+                        current = word;
+                    }
+                    else current += word;
+                }
+                lines.Add(LayoutText(current, font, style));
+            }
+            var bounds = SKRect.Empty;
+            var align = ConvertAlignment(style.Paint.TextJustify);
+            for (var i = 0; i < lines.Count; i++)
+            {
+                var line = lines[i];
+                var x = (float)(geometry.X + style.Paint.TextOffset.X * style.Paint.TextSize);
+                x -= align == SKTextAlign.Center ? line.Width / 2 : align == SKTextAlign.Right ? line.Width : 0;
+                var y = (float)(geometry.Y + style.Paint.TextOffset.Y * style.Paint.TextSize)
+                    + (i - lines.Count / 2f + 1) * font.Size;
+                var placed = line.Place(x, y);
+                placements.Add(placed);
+                if (!placed.Bounds.IsEmpty) bounds = bounds.IsEmpty ? placed.Bounds : SKRect.Union(bounds, placed.Bounds);
+            }
+            if (bounds.IsEmpty) return;
+            var margin = (float)Math.Abs(style.Paint.TextStrokeWidth) / 2 + 1;
+            bounds.Inflate(margin, margin);
+            var rectangle = new Rect(bounds.Left, bounds.Top, bounds.Width, bounds.Height);
+            if (!new Rect(0, 0, width, height).Contains(rectangle)) return;
+            rectangle.Inflate(5, 5);
+            if (TextCollides(rectangle)) return;
+            textRectangles.Add(rectangle);
+            foreach (var placed in placements)
+            {
+                if (style.Paint.TextStrokeWidth != 0) placed.Draw(canvas, halo);
+                placed.Draw(canvas, paint);
+            }
         }
-
-        var glyphs = new ushort[typeface.CountGlyphs(style.Text)];
-        if (glyphs.Length < style.Text.Length)
+        finally
         {
-            var fm = SKFontManager.Default;
-            var newTypeface = fm.MatchCharacter(style.Text[glyphs.Length]);
-
-            if (newTypeface == null)
-            {
-                return;
-            }
-
-            font.Typeface = newTypeface;
-
-            glyphs = new ushort[newTypeface.CountGlyphs(style.Text)];
-            if (glyphs.Length < style.Text.Length)
-            {
-                // still causing issues
-                // so we cut the rest
-                int charIdx = (glyphs.Length > 0) ? glyphs.Length : 0;
-
-                style.Text = style.Text.Substring(0, charIdx);
-            }
+            foreach (var placed in placements) placed.Dispose();
+            foreach (var line in lines) line.Dispose();
         }
     }
 
@@ -461,13 +545,18 @@ public class SkiaCanvas : ICanvas
             //return;
         }
 
-        var paint = GetTextPaint(style);
-        var font = GetTextFont(style);
-        QualifyTypeface(style, font);
+        using var paint = GetTextPaint(style);
+        using var font = GetTextFont(style);
+
         var textAlign = ConvertAlignment(style.Paint.TextJustify);
 
-        var strokePaint = GetTextStrokePaint(style);
-        var strokeFont = GetTextFont(style, font.Typeface);
+        using var strokePaint = GetTextStrokePaint(style);
+        using var strokeFont = GetTextFont(style, font.Typeface);
+        if (NeedsComplexLayout(style.Text, font))
+        {
+            DrawComplexText(geometry, style, font, paint, strokePaint);
+            return;
+        }
         var text = TransformText(style.Text, style, paint, font);
         var allLines = text.Split('\n');
 
@@ -596,16 +685,17 @@ public class SkiaCanvas : ICanvas
 
     public void DrawTextOnPath(List<Point> geometry, Brush style)
     {
-        var textPaint = GetTextPaint(style);
-        var textFont = GetTextFont(style);
-        QualifyTypeface(style, textFont);
+        using var textPaint = GetTextPaint(style);
+        using var textFont = GetTextFont(style);
+
         var text = TransformTextSingleLine(style.Text, style);
         if (string.IsNullOrWhiteSpace(text))
         {
             return;
         }
 
-        var textWidth = textFont.MeasureText(text, textPaint);
+        using var layout = NeedsComplexLayout(text, textFont) ? LayoutText(text, textFont, style) : null;
+        var textWidth = layout?.Width ?? textFont.MeasureText(text, textPaint);
         var offset = new SKPoint((float)style.Paint.TextOffset.X, (float)style.Paint.TextOffset.Y);
         var margin = (float)Math.Abs(style.Paint.TextStrokeWidth) / 2 + 1;
         if (textWidth <= 0)
@@ -632,12 +722,13 @@ public class SkiaCanvas : ICanvas
             using var path = GetPathFromGeometry(section);
             // Position rigid glyphs at road tangents; DrawTextOnPath's default
             // warps glyph outlines and can severely deform letters on curves.
-            using var label = SKTextBlob.CreatePathPositioned(text, textFont, path, SKTextAlign.Center, offset);
-            if (label == null)
+            using var placed = layout?.Place(offset.X, offset.Y, path);
+            using var label = layout == null ? SKTextBlob.CreatePathPositioned(text, textFont, path, SKTextAlign.Center, offset) : null;
+            if (label == null && placed == null)
             {
                 continue;
             }
-            var bounds = label.Bounds;
+            var bounds = placed?.Bounds ?? label.Bounds;
             bounds.Inflate(margin, margin);
             var rectangle = new Rect(bounds.Left, bounds.Top, bounds.Width, bounds.Height);
             if (!new Rect(0, 0, width, height).Contains(rectangle) || TextCollides(rectangle))
@@ -648,9 +739,12 @@ public class SkiaCanvas : ICanvas
             textRectangles.Add(rectangle);
             if (style.Paint.TextStrokeWidth != 0)
             {
-                canvas.DrawText(label, 0, 0, GetTextStrokePaint(style));
+                using var halo = GetTextStrokePaint(style);
+                if (placed != null) placed.Draw(canvas, halo);
+                else canvas.DrawText(label, 0, 0, halo);
             }
-            canvas.DrawText(label, 0, 0, textPaint);
+            if (placed != null) placed.Draw(canvas, textPaint);
+            else canvas.DrawText(label, 0, 0, textPaint);
             return;
         }
     }
@@ -711,7 +805,7 @@ public class SkiaCanvas : ICanvas
                 return;
             }
 
-            SKPaint fillPaint = new()
+            using SKPaint fillPaint = new()
             {
                 Style = SKPaintStyle.Fill,
                 StrokeCap = ConvertCap(style.Paint.LineCap),
@@ -745,27 +839,16 @@ public class SkiaCanvas : ICanvas
 
     }
 
-    public SKBitmap FinishDrawing()
+    /// <summary>Transfers ownership of the completed bitmap to the caller.</summary>
+    public virtual SKBitmap FinishDrawing()
     {
-        //using (var paint = new SKPaint())
-        //{
-        //    paint.Color = new SKColor(255, 255, 255, 255);
-        //    paint.Style = SKPaintStyle.Fill;
-        //    paint.TextSize = 24;
-        //    paint.IsAntialias = true;
-
-        //    var bytes = Encoding.UTF32.GetBytes("HELLO WORLD");
-        //    canvas.DrawText(bytes, new SKPoint(10, 10), paint);
-        //}
-
-
-        //surface.Canvas.Flush();
-        //grContext.
-
-
+        if (disposed) throw new ObjectDisposedException(nameof(SkiaCanvas));
+        if (canvas == null) throw new InvalidOperationException("StartDrawing must precede FinishDrawing.");
         canvas.Flush();
         OnBeforeFinishDrawing();
-
-        return bitmap;
+        var result = bitmap;
+        bitmap = null;
+        ReleaseDrawing();
+        return result;
     }
 }

@@ -204,12 +204,11 @@ internal static class ParityInvestigation
             canvas = recorder.BeginRecording(new SKRect(0, 0, (float)width, (float)height));
         }
         protected override void OnBeforeFinishDrawing() => Picture = recorder.EndRecording();
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
             Picture?.Dispose();
             recorder.Dispose();
-            surface?.Dispose();
-            bitmap?.Dispose();
+            base.Dispose(disposing);
         }
     }
 }
