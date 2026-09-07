@@ -1,0 +1,797 @@
+{
+  "TimestampUtc": "2026-09-05T18:03:49.0796425Z",
+  "ExitCode": 1,
+  "LibraryBaseline": "7bc45e1891402ab2fbda5a557ea94e3856fc9085",
+  "Hardware": "Intel Core i7-13700K / NVIDIA GeForce RTX 4070 Ti",
+  "Results": [
+    {
+      "Case": "Environment",
+      "Runtime": ".NET 10.0.11",
+      "OS": "Microsoft Windows 10.0.26200",
+      "Architecture": "X64",
+      "SkiaSharp": "3.119.0.0",
+      "LogicalProcessors": 24,
+      "OwnerThread": 2,
+      "Iterations": 30,
+      "MinimumUsefulSpeedup": 1.1,
+      "Concurrency": 1,
+      "CachePolicy": "OS file cache uncontrolled; decoded source reused; image hit measured separately"
+    },
+    {
+      "Case": "Check",
+      "Name": "Initial thread has no native context",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Cpu without context selects CPU",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Gpu without context selects CPU",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Auto without context selects CPU",
+      "Passed": true
+    },
+    {
+      "Case": "LocalDataset",
+      "File": "osm-2020-02-10-v3.11_us_colorado.mbtiles",
+      "Bytes": 260767744,
+      "Metadata": {
+        "attribution": "<a href=\"https://www.maptiler.com/copyright/\" target=\"_blank\">&copy; MapTiler</a> <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">&copy; OpenStreetMap contributors</a>",
+        "bounds": "-109.0631,36.98943,-102.041,41.00372",
+        "center": "-105.55205000000001,38.996575,14",
+        "description": "Region Colorado extract from https://openmaptiles.com",
+        "format": "pbf",
+        "maxzoom": "14",
+        "minzoom": "0",
+        "name": "OpenMapTiles",
+        "scheme": "tms",
+        "id": "openmaptiles",
+        "maskLevel": "5",
+        "planettime": "1581292800000",
+        "mtime": "1581445940000",
+        "version": "3.11",
+        "basename": "us_colorado.mbtiles"
+      },
+      "Selection": "Largest compressed tile at each selected native zoom, ties resolved by column/row; stress sample, not whole-database coverage"
+    },
+    {
+      "Case": "SelectedTile",
+      "X": 213,
+      "TmsY": 635,
+      "Zoom": 10,
+      "CompressedBytes": 103247,
+      "FeatureCount": 9450,
+      "PointCount": 22456,
+      "Layers": [
+        {
+          "Name": "water",
+          "Features": 63
+        },
+        {
+          "Name": "waterway",
+          "Features": 5
+        },
+        {
+          "Name": "landcover",
+          "Features": 81
+        },
+        {
+          "Name": "landuse",
+          "Features": 227
+        },
+        {
+          "Name": "mountain_peak",
+          "Features": 8
+        },
+        {
+          "Name": "park",
+          "Features": 12
+        },
+        {
+          "Name": "boundary",
+          "Features": 51
+        },
+        {
+          "Name": "aeroway",
+          "Features": 136
+        },
+        {
+          "Name": "transportation",
+          "Features": 8775
+        },
+        {
+          "Name": "transportation_name",
+          "Features": 33
+        },
+        {
+          "Name": "place",
+          "Features": 53
+        },
+        {
+          "Name": "aerodrome_label",
+          "Features": 6
+        }
+      ]
+    },
+    {
+      "Case": "SelectedTile",
+      "X": 853,
+      "TmsY": 2541,
+      "Zoom": 12,
+      "CompressedBytes": 166981,
+      "FeatureCount": 14766,
+      "PointCount": 34835,
+      "Layers": [
+        {
+          "Name": "water",
+          "Features": 54
+        },
+        {
+          "Name": "waterway",
+          "Features": 21
+        },
+        {
+          "Name": "landcover",
+          "Features": 17
+        },
+        {
+          "Name": "landuse",
+          "Features": 118
+        },
+        {
+          "Name": "park",
+          "Features": 2
+        },
+        {
+          "Name": "boundary",
+          "Features": 1
+        },
+        {
+          "Name": "transportation",
+          "Features": 14452
+        },
+        {
+          "Name": "transportation_name",
+          "Features": 50
+        },
+        {
+          "Name": "place",
+          "Features": 25
+        },
+        {
+          "Name": "poi",
+          "Features": 26
+        }
+      ]
+    },
+    {
+      "Case": "SelectedTile",
+      "X": 3411,
+      "TmsY": 10167,
+      "Zoom": 14,
+      "CompressedBytes": 384584,
+      "FeatureCount": 25089,
+      "PointCount": 156288,
+      "Layers": [
+        {
+          "Name": "waterway",
+          "Features": 25
+        },
+        {
+          "Name": "landcover",
+          "Features": 7919
+        },
+        {
+          "Name": "landuse",
+          "Features": 53
+        },
+        {
+          "Name": "transportation",
+          "Features": 1872
+        },
+        {
+          "Name": "building",
+          "Features": 8853
+        },
+        {
+          "Name": "water_name",
+          "Features": 6
+        },
+        {
+          "Name": "transportation_name",
+          "Features": 90
+        },
+        {
+          "Name": "place",
+          "Features": 8
+        },
+        {
+          "Name": "housenumber",
+          "Features": 5444
+        },
+        {
+          "Name": "poi",
+          "Features": 819
+        }
+      ]
+    },
+    {
+      "Case": "Check",
+      "Name": "Null-context canvas renders CPU pixels",
+      "Passed": true
+    },
+    {
+      "Case": "WGL",
+      "Vendor": "NVIDIA Corporation",
+      "Renderer": "NVIDIA GeForce RTX 4070 Ti/PCIe/SSE2",
+      "Version": "4.6.0 NVIDIA 616.56",
+      "IsHardwarePixelFormat": true,
+      "StartupMs": 162.2665
+    },
+    {
+      "Case": "SkiaContext",
+      "StartupMs": 2.1429
+    },
+    {
+      "Case": "AutoAfterInitialFailure",
+      "Actual": "CPU",
+      "Interpretation": "Observation of process-global negative availability cache, not a GPU capability result"
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z10-213-635-warm-source-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z10-213-635-warm-source",
+      "Size": 256,
+      "MeanChannelError": 0.47614288330078125,
+      "PixelsOver32Percent": 0.00152587890625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z10-213-635-warm-source-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z10-213-635-warm-source",
+      "Size": 512,
+      "MeanChannelError": 0.2644510269165039,
+      "PixelsOver32Percent": 0.0003814697265625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z10-213-635-warm-source-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z10-213-635-warm-source",
+      "Size": 1024,
+      "MeanChannelError": 0.1637253761291504,
+      "PixelsOver32Percent": 0,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z10-213-635-fresh-source-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z10-213-635-fresh-source",
+      "Size": 256,
+      "MeanChannelError": 0.47614288330078125,
+      "PixelsOver32Percent": 0.00152587890625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z10-213-635-fresh-source-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z10-213-635-fresh-source",
+      "Size": 512,
+      "MeanChannelError": 0.2644510269165039,
+      "PixelsOver32Percent": 0.0003814697265625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z10-213-635-fresh-source-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z10-213-635-fresh-source",
+      "Size": 1024,
+      "MeanChannelError": 0.1637253761291504,
+      "PixelsOver32Percent": 0,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z12-853-2541-warm-source-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z12-853-2541-warm-source",
+      "Size": 256,
+      "MeanChannelError": 0.8849334716796875,
+      "PixelsOver32Percent": 0.0823974609375,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z12-853-2541-warm-source-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z12-853-2541-warm-source",
+      "Size": 512,
+      "MeanChannelError": 0.6658267974853516,
+      "PixelsOver32Percent": 0.0553131103515625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z12-853-2541-warm-source-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z12-853-2541-warm-source",
+      "Size": 1024,
+      "MeanChannelError": 0.4365072250366211,
+      "PixelsOver32Percent": 0.01621246337890625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z12-853-2541-fresh-source-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z12-853-2541-fresh-source",
+      "Size": 256,
+      "MeanChannelError": 0.8849334716796875,
+      "PixelsOver32Percent": 0.0823974609375,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z12-853-2541-fresh-source-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z12-853-2541-fresh-source",
+      "Size": 512,
+      "MeanChannelError": 0.6658267974853516,
+      "PixelsOver32Percent": 0.0553131103515625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z12-853-2541-fresh-source-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z12-853-2541-fresh-source",
+      "Size": 1024,
+      "MeanChannelError": 0.4365072250366211,
+      "PixelsOver32Percent": 0.01621246337890625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z14-3411-10167-warm-source-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z14-3411-10167-warm-source",
+      "Size": 256,
+      "MeanChannelError": 1.5350532531738281,
+      "PixelsOver32Percent": 0.164794921875,
+      "Passed": false
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z14-3411-10167-warm-source-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z14-3411-10167-warm-source",
+      "Size": 512,
+      "MeanChannelError": 1.1569595336914062,
+      "PixelsOver32Percent": 0.05340576171875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z14-3411-10167-warm-source-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z14-3411-10167-warm-source",
+      "Size": 1024,
+      "MeanChannelError": 0.6341962814331055,
+      "PixelsOver32Percent": 0.031566619873046875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z14-3411-10167-fresh-source-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z14-3411-10167-fresh-source",
+      "Size": 256,
+      "MeanChannelError": 1.5350532531738281,
+      "PixelsOver32Percent": 0.164794921875,
+      "Passed": false
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z14-3411-10167-fresh-source-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z14-3411-10167-fresh-source",
+      "Size": 512,
+      "MeanChannelError": 1.1569595336914062,
+      "PixelsOver32Percent": 0.05340576171875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "mbtiles-z14-3411-10167-fresh-source-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "mbtiles-z14-3411-10167-fresh-source",
+      "Size": 1024,
+      "MeanChannelError": 0.6341962814331055,
+      "PixelsOver32Percent": 0.031566619873046875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Yielding provider returns to host render thread with valid readback",
+      "Passed": true
+    },
+    {
+      "Case": "UnhostedAsync",
+      "Result": "Guard rejected wrong-thread native access",
+      "RejectedCalls": 189
+    },
+    {
+      "Case": "PerformanceSkipped",
+      "Workload": "mbtiles-z14-3411-10167-warm-source",
+      "Size": 256,
+      "Reason": "Declared pixel parity gate failed; tolerance unchanged"
+    },
+    {
+      "Case": "PerformanceSkipped",
+      "Workload": "mbtiles-z14-3411-10167-fresh-source",
+      "Size": 256,
+      "Reason": "Declared pixel parity gate failed; tolerance unchanged"
+    },
+    {
+      "Case": "RepeatedRenderMemory",
+      "BeforePrivateBytes": 412397568,
+      "AfterPrivateBytes": 437194752,
+      "Interpretation": "Observation only; managed finalization forced, no native-memory plateau claim"
+    },
+    {
+      "Case": "Check",
+      "Name": "Surface exists before abandonment",
+      "Passed": true
+    },
+    {
+      "Case": "AbandonedReadback",
+      "ProductionReturnedBitmap": true,
+      "CheckedReadbackSucceeded": false,
+      "Interpretation": "Production does not inspect ReadPixels result"
+    },
+    {
+      "Case": "Check",
+      "Name": "Abandoned context surface creation falls back to correct CPU pixels",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host shutdown unbound GL context",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host recreation 1",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host recreation 2",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host recreation 3",
+      "Passed": true
+    }
+  ],
+  "Timings": [
+    {
+      "Workload": "mbtiles-z10-213-635-warm-source",
+      "Size": 256,
+      "CpuRender": 44.333,
+      "GpuRender": 50.745,
+      "CpuTotal": 49.662,
+      "GpuTotal": 55.696,
+      "CpuP95": 62.996,
+      "GpuP95": 72.11,
+      "Speedup": 0.892
+    },
+    {
+      "Workload": "mbtiles-z10-213-635-warm-source",
+      "Size": 512,
+      "CpuRender": 45.908,
+      "GpuRender": 49.975,
+      "CpuTotal": 58.178,
+      "GpuTotal": 61.748,
+      "CpuP95": 77.516,
+      "GpuP95": 77.959,
+      "Speedup": 0.942
+    },
+    {
+      "Workload": "mbtiles-z10-213-635-warm-source",
+      "Size": 1024,
+      "CpuRender": 54.397,
+      "GpuRender": 57.798,
+      "CpuTotal": 87.467,
+      "GpuTotal": 88.573,
+      "CpuP95": 104.625,
+      "GpuP95": 100.99,
+      "Speedup": 0.988
+    },
+    {
+      "Workload": "mbtiles-z10-213-635-fresh-source",
+      "Size": 256,
+      "CpuRender": 69.196,
+      "GpuRender": 72.625,
+      "CpuTotal": 74.208,
+      "GpuTotal": 77.303,
+      "CpuP95": 89.869,
+      "GpuP95": 95.689,
+      "Speedup": 0.96
+    },
+    {
+      "Workload": "mbtiles-z10-213-635-fresh-source",
+      "Size": 512,
+      "CpuRender": 74.052,
+      "GpuRender": 78.254,
+      "CpuTotal": 86.57,
+      "GpuTotal": 89.941,
+      "CpuP95": 99.729,
+      "GpuP95": 104.83,
+      "Speedup": 0.963
+    },
+    {
+      "Workload": "mbtiles-z10-213-635-fresh-source",
+      "Size": 1024,
+      "CpuRender": 81.973,
+      "GpuRender": 85.916,
+      "CpuTotal": 115.008,
+      "GpuTotal": 117.028,
+      "CpuP95": 130.387,
+      "GpuP95": 131.37,
+      "Speedup": 0.983
+    },
+    {
+      "Workload": "mbtiles-z12-853-2541-warm-source",
+      "Size": 256,
+      "CpuRender": 78.353,
+      "GpuRender": 84.022,
+      "CpuTotal": 88.087,
+      "GpuTotal": 93.543,
+      "CpuP95": 102.813,
+      "GpuP95": 106.261,
+      "Speedup": 0.942
+    },
+    {
+      "Workload": "mbtiles-z12-853-2541-warm-source",
+      "Size": 512,
+      "CpuRender": 85.069,
+      "GpuRender": 91.389,
+      "CpuTotal": 111.156,
+      "GpuTotal": 118.06,
+      "CpuP95": 125.61,
+      "GpuP95": 129.394,
+      "Speedup": 0.942
+    },
+    {
+      "Workload": "mbtiles-z12-853-2541-warm-source",
+      "Size": 1024,
+      "CpuRender": 97.465,
+      "GpuRender": 100.175,
+      "CpuTotal": 152.937,
+      "GpuTotal": 146.903,
+      "CpuP95": 166.132,
+      "GpuP95": 159.045,
+      "Speedup": 1.041
+    },
+    {
+      "Workload": "mbtiles-z12-853-2541-fresh-source",
+      "Size": 256,
+      "CpuRender": 128.318,
+      "GpuRender": 130.921,
+      "CpuTotal": 138.082,
+      "GpuTotal": 140.57,
+      "CpuP95": 164.977,
+      "GpuP95": 156.402,
+      "Speedup": 0.982
+    },
+    {
+      "Workload": "mbtiles-z12-853-2541-fresh-source",
+      "Size": 512,
+      "CpuRender": 131.024,
+      "GpuRender": 135.669,
+      "CpuTotal": 157.441,
+      "GpuTotal": 161.48,
+      "CpuP95": 170.072,
+      "GpuP95": 178.081,
+      "Speedup": 0.975
+    },
+    {
+      "Workload": "mbtiles-z12-853-2541-fresh-source",
+      "Size": 1024,
+      "CpuRender": 152.382,
+      "GpuRender": 149.163,
+      "CpuTotal": 207.158,
+      "GpuTotal": 194.301,
+      "CpuP95": 222.501,
+      "GpuP95": 220.742,
+      "Speedup": 1.066
+    },
+    {
+      "Workload": "mbtiles-z14-3411-10167-warm-source",
+      "Size": 512,
+      "CpuRender": 66.585,
+      "GpuRender": 69.58,
+      "CpuTotal": 95.866,
+      "GpuTotal": 94.173,
+      "CpuP95": 113.006,
+      "GpuP95": 109.314,
+      "Speedup": 1.018
+    },
+    {
+      "Workload": "mbtiles-z14-3411-10167-warm-source",
+      "Size": 1024,
+      "CpuRender": 78.136,
+      "GpuRender": 83.043,
+      "CpuTotal": 158.005,
+      "GpuTotal": 147.796,
+      "CpuP95": 168.782,
+      "GpuP95": 160.948,
+      "Speedup": 1.069
+    },
+    {
+      "Workload": "mbtiles-z14-3411-10167-fresh-source",
+      "Size": 512,
+      "CpuRender": 142.076,
+      "GpuRender": 141.847,
+      "CpuTotal": 171.957,
+      "GpuTotal": 166.944,
+      "CpuP95": 194.786,
+      "GpuP95": 182.859,
+      "Speedup": 1.03
+    },
+    {
+      "Workload": "mbtiles-z14-3411-10167-fresh-source",
+      "Size": 1024,
+      "CpuRender": 158.935,
+      "GpuRender": 159.099,
+      "CpuTotal": 238.239,
+      "GpuTotal": 224.579,
+      "CpuP95": 263.499,
+      "GpuP95": 239.3,
+      "Speedup": 1.061
+    }
+  ],
+  "SourceAndInputHashes": [
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\MbTilesWorkloads.cs",
+      "Sha256": "43AF2E68001760F8B5953B8FB07EBDF90179E08393A6B21FA5384E64D98A128A"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\PixelComparison.cs",
+      "Sha256": "7B787A310A03B079C207695A1AD480D3B688D865896C5FE192025A34390DAC32"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\ProbeCanvas.cs",
+      "Sha256": "54A4B1F04BB1A7CA3691825F4F6E760EB0DF35C684E7345B5FFA8B25DCBB207E"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\Program.cs",
+      "Sha256": "A26129D1601462C3D840701045DB87AE5B369213F309F266F92A8FA8DF42DDF6"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\RenderThread.cs",
+      "Sha256": "23C830A1D0BC59637CF7329EE404441B1B7F165FD749E2725F6A3DF479FE8744"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\ThreadBoundCanvas.cs",
+      "Sha256": "66C9C06BCD66EE58A7E994AA730054A5050B149CC0248B10876A3E71D6100E31"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\WindowsGlContext.cs",
+      "Sha256": "B77D771ACF5CA8E1FCE7607BE9FD589240DF2F692363F74FF9FF2408CEEA0653"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\Workload.cs",
+      "Sha256": "B0374EA10368F679A5B4CE31D85BB3E0864AAFFE02527197F935A77C5D6D99DB"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\VectorTileRenderer.GpuValidation.csproj",
+      "Sha256": "9F68826C568D2100348FB66BE7F18D86B30926CAE6D7C19FBB7A37102B5EC830"
+    },
+    {
+      "Path": "VectorTileRenderer\\Renderer.cs",
+      "Sha256": "C836173903D1773EC0FB0B32FAAFC0A9C167E73399B53EE950064207F9DFB258"
+    },
+    {
+      "Path": "VectorTileRenderer\\SkiaCanvas.cs",
+      "Sha256": "E17873F144CC5C8E0C92B04862A7AA8E75CBEF32CE051FDA1E0FECF3F022A53A"
+    },
+    {
+      "Path": "VectorTileRenderer\\SkiaGpuCanvas.cs",
+      "Sha256": "0324EBF6512C5CFADD62260A59EF61F60AB0D01E42FD8723A48F4FDEAAF2D910"
+    },
+    {
+      "Path": "VectorTileRenderer\\CanvasFactory.cs",
+      "Sha256": "58EC1B3037EA13667F53CCDEF14455656478B4940F2EB522A090F834642F5A7B"
+    },
+    {
+      "Path": "VectorTileRenderer\\Sources\\SingleMbTilesSource.cs",
+      "Sha256": "2641EDE7935B3F1F48D9A1E7D134325B3BF4C7D54963CFE36A80A332117C3EBB"
+    },
+    {
+      "Path": "tiles\\real\\osm-2020-02-10-v3.11_us_colorado.mbtiles",
+      "Sha256": "82158D7FC8E02A2E3F5730202EB542EE0EDC1342F21ABCB01C9C0FD6E6EF82D6"
+    },
+    {
+      "Path": "styles\\basic-style.json",
+      "Sha256": "A6A5FA5F97B8B2FB1D706A87A1D783A67D22B25DECABF4431B39D1F18FB15825"
+    },
+    {
+      "Path": "styles\\fonts\\OpenSans Regular.ttf",
+      "Sha256": "13C03E22A633919BEB2847C58C8285FB8A735EE97097D7C48FD403F8294B05F8"
+    },
+    {
+      "Path": "styles\\fonts\\Noto Sans Regular.ttf",
+      "Sha256": "9E9B4C53BD25CAD9C04D370F133A5E32D166D0D54E2A9AD6CBA4A31FCD382D5B"
+    }
+  ]
+}

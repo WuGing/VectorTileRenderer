@@ -1,0 +1,466 @@
+{
+  "TimestampUtc": "2026-09-05T15:32:13.6674536Z",
+  "ExitCode": 1,
+  "LibraryBaseline": "7bc45e1891402ab2fbda5a557ea94e3856fc9085",
+  "Hardware": "Intel Core i7-13700K / NVIDIA GeForce RTX 4070 Ti",
+  "Results": [
+    {
+      "Case": "Environment",
+      "Runtime": ".NET 10.0.11",
+      "OS": "Microsoft Windows 10.0.26200",
+      "Architecture": "X64",
+      "SkiaSharp": "3.119.0.0",
+      "LogicalProcessors": 24,
+      "OwnerThread": 2,
+      "Iterations": 30,
+      "MinimumUsefulSpeedup": 1.1,
+      "Concurrency": 1,
+      "CachePolicy": "OS file cache uncontrolled; decoded source reused; image hit measured separately"
+    },
+    {
+      "Case": "Check",
+      "Name": "Initial thread has no native context",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Cpu without context selects CPU",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Gpu without context selects CPU",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Auto without context selects CPU",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Null-context canvas renders CPU pixels",
+      "Passed": true
+    },
+    {
+      "Case": "WGL",
+      "Vendor": "NVIDIA Corporation",
+      "Renderer": "NVIDIA GeForce RTX 4070 Ti/PCIe/SSE2",
+      "Version": "4.6.0 NVIDIA 616.56",
+      "IsHardwarePixelFormat": true,
+      "StartupMs": 143.3063
+    },
+    {
+      "Case": "SkiaContext",
+      "StartupMs": 1.9849
+    },
+    {
+      "Case": "AutoAfterInitialFailure",
+      "Actual": "CPU",
+      "Interpretation": "Observation of process-global negative availability cache, not a GPU capability result"
+    },
+    {
+      "Case": "Check",
+      "Name": "synthetic-geometry-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-geometry",
+      "Size": 256,
+      "MeanChannelError": 1.9932937622070312,
+      "PixelsOver32Percent": 1.16119384765625,
+      "Passed": false
+    },
+    {
+      "Case": "Check",
+      "Name": "synthetic-geometry-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-geometry",
+      "Size": 512,
+      "MeanChannelError": 1.033555030822754,
+      "PixelsOver32Percent": 0.3696441650390625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "synthetic-geometry-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-geometry",
+      "Size": 1024,
+      "MeanChannelError": 0.6939647197723389,
+      "PixelsOver32Percent": 0.3493309020996094,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "synthetic-text-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-text",
+      "Size": 256,
+      "MeanChannelError": 0.3583641052246094,
+      "PixelsOver32Percent": 0.091552734375,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "synthetic-text-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-text",
+      "Size": 512,
+      "MeanChannelError": 0.26349830627441406,
+      "PixelsOver32Percent": 0.0507354736328125,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "synthetic-text-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-text",
+      "Size": 1024,
+      "MeanChannelError": 0.22520184516906738,
+      "PixelsOver32Percent": 0.017452239990234375,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "zurich-decoded-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-decoded",
+      "Size": 256,
+      "MeanChannelError": 0.9379806518554688,
+      "PixelsOver32Percent": 0.09002685546875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "zurich-decoded-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-decoded",
+      "Size": 512,
+      "MeanChannelError": 0.6790962219238281,
+      "PixelsOver32Percent": 0.18463134765625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "zurich-decoded-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-decoded",
+      "Size": 1024,
+      "MeanChannelError": 0.5606012344360352,
+      "PixelsOver32Percent": 0.151824951171875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "zurich-file-decode-256 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-file-decode",
+      "Size": 256,
+      "MeanChannelError": 0.9379806518554688,
+      "PixelsOver32Percent": 0.09002685546875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "zurich-file-decode-512 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-file-decode",
+      "Size": 512,
+      "MeanChannelError": 0.6790962219238281,
+      "PixelsOver32Percent": 0.18463134765625,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "zurich-file-decode-1024 actual GPU and checked readback",
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-file-decode",
+      "Size": 1024,
+      "MeanChannelError": 0.5606012344360352,
+      "PixelsOver32Percent": 0.151824951171875,
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Yielding provider returns to host render thread with valid readback",
+      "Passed": true
+    },
+    {
+      "Case": "UnhostedAsync",
+      "Result": "Guard rejected wrong-thread native access",
+      "RejectedCalls": 189
+    },
+    {
+      "Case": "PerformanceSkipped",
+      "Workload": "synthetic-geometry",
+      "Size": 256,
+      "Reason": "Declared pixel parity gate failed; tolerance unchanged"
+    },
+    {
+      "Case": "RepeatedRenderMemory",
+      "BeforePrivateBytes": 277032960,
+      "AfterPrivateBytes": 292585472,
+      "Interpretation": "Observation only; managed finalization forced, no native-memory plateau claim"
+    },
+    {
+      "Case": "Check",
+      "Name": "Surface exists before abandonment",
+      "Passed": true
+    },
+    {
+      "Case": "AbandonedReadback",
+      "ProductionReturnedBitmap": true,
+      "CheckedReadbackSucceeded": false,
+      "Interpretation": "Production does not inspect ReadPixels result"
+    },
+    {
+      "Case": "Check",
+      "Name": "Abandoned context surface creation falls back to correct CPU pixels",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host shutdown unbound GL context",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host recreation 1",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host recreation 2",
+      "Passed": true
+    },
+    {
+      "Case": "Check",
+      "Name": "Host recreation 3",
+      "Passed": true
+    }
+  ],
+  "Timings": [
+    {
+      "Workload": "synthetic-geometry",
+      "Size": 512,
+      "CpuRender": 1.024,
+      "GpuRender": 2.381,
+      "CpuTotal": 10.445,
+      "GpuTotal": 10.749,
+      "CpuP95": 10.846,
+      "GpuP95": 12.522,
+      "Speedup": 0.972
+    },
+    {
+      "Workload": "synthetic-geometry",
+      "Size": 1024,
+      "CpuRender": 1.884,
+      "GpuRender": 6.17,
+      "CpuTotal": 28.415,
+      "GpuTotal": 29.727,
+      "CpuP95": 29.586,
+      "GpuP95": 34.126,
+      "Speedup": 0.956
+    },
+    {
+      "Workload": "synthetic-text",
+      "Size": 256,
+      "CpuRender": 0.311,
+      "GpuRender": 1.272,
+      "CpuTotal": 2.479,
+      "GpuTotal": 3.407,
+      "CpuP95": 2.687,
+      "GpuP95": 4.92,
+      "Speedup": 0.728
+    },
+    {
+      "Workload": "synthetic-text",
+      "Size": 512,
+      "CpuRender": 0.635,
+      "GpuRender": 1.987,
+      "CpuTotal": 7.643,
+      "GpuTotal": 8.946,
+      "CpuP95": 8.072,
+      "GpuP95": 9.782,
+      "Speedup": 0.854
+    },
+    {
+      "Workload": "synthetic-text",
+      "Size": 1024,
+      "CpuRender": 1.248,
+      "GpuRender": 4.137,
+      "CpuTotal": 23.323,
+      "GpuTotal": 26.075,
+      "CpuP95": 23.999,
+      "GpuP95": 27.713,
+      "Speedup": 0.894
+    },
+    {
+      "Workload": "zurich-decoded",
+      "Size": 256,
+      "CpuRender": 25.764,
+      "GpuRender": 28.803,
+      "CpuTotal": 32.34,
+      "GpuTotal": 35.084,
+      "CpuP95": 40.25,
+      "GpuP95": 38.743,
+      "Speedup": 0.922
+    },
+    {
+      "Workload": "zurich-decoded",
+      "Size": 512,
+      "CpuRender": 28.04,
+      "GpuRender": 31.705,
+      "CpuTotal": 45.836,
+      "GpuTotal": 48.422,
+      "CpuP95": 54.854,
+      "GpuP95": 56.774,
+      "Speedup": 0.947
+    },
+    {
+      "Workload": "zurich-decoded",
+      "Size": 1024,
+      "CpuRender": 41.986,
+      "GpuRender": 43.034,
+      "CpuTotal": 123.446,
+      "GpuTotal": 116.524,
+      "CpuP95": 135.141,
+      "GpuP95": 123.711,
+      "Speedup": 1.059
+    },
+    {
+      "Workload": "zurich-file-decode",
+      "Size": 256,
+      "CpuRender": 74.469,
+      "GpuRender": 76.176,
+      "CpuTotal": 81.489,
+      "GpuTotal": 82.17,
+      "CpuP95": 90.322,
+      "GpuP95": 98.625,
+      "Speedup": 0.992
+    },
+    {
+      "Workload": "zurich-file-decode",
+      "Size": 512,
+      "CpuRender": 74.466,
+      "GpuRender": 77.544,
+      "CpuTotal": 92.342,
+      "GpuTotal": 93.926,
+      "CpuP95": 131.722,
+      "GpuP95": 106.359,
+      "Speedup": 0.983
+    },
+    {
+      "Workload": "zurich-file-decode",
+      "Size": 1024,
+      "CpuRender": 89.646,
+      "GpuRender": 88.578,
+      "CpuTotal": 171.336,
+      "GpuTotal": 159.99,
+      "CpuP95": 180.194,
+      "GpuP95": 173.658,
+      "Speedup": 1.071
+    }
+  ],
+  "SourceAndInputHashes": [
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\PixelComparison.cs",
+      "Sha256": "7B787A310A03B079C207695A1AD480D3B688D865896C5FE192025A34390DAC32"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\ProbeCanvas.cs",
+      "Sha256": "54A4B1F04BB1A7CA3691825F4F6E760EB0DF35C684E7345B5FFA8B25DCBB207E"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\Program.cs",
+      "Sha256": "B1F9E9A3CF99165CBDE26D9476964C7D2C1D3F80A797D3D989ADE395D0436461"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\RenderThread.cs",
+      "Sha256": "23C830A1D0BC59637CF7329EE404441B1B7F165FD749E2725F6A3DF479FE8744"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\ThreadBoundCanvas.cs",
+      "Sha256": "66C9C06BCD66EE58A7E994AA730054A5050B149CC0248B10876A3E71D6100E31"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\WindowsGlContext.cs",
+      "Sha256": "B77D771ACF5CA8E1FCE7607BE9FD589240DF2F692363F74FF9FF2408CEEA0653"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\Workload.cs",
+      "Sha256": "47E7328E64C2107DFCF68F2F782C1CD3F3AA5A2A0BC2AFC95A79B82F11F30014"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation\\VectorTileRenderer.GpuValidation.csproj",
+      "Sha256": "9F68826C568D2100348FB66BE7F18D86B30926CAE6D7C19FBB7A37102B5EC830"
+    },
+    {
+      "Path": "VectorTileRenderer\\Renderer.cs",
+      "Sha256": "C836173903D1773EC0FB0B32FAAFC0A9C167E73399B53EE950064207F9DFB258"
+    },
+    {
+      "Path": "VectorTileRenderer\\SkiaCanvas.cs",
+      "Sha256": "E17873F144CC5C8E0C92B04862A7AA8E75CBEF32CE051FDA1E0FECF3F022A53A"
+    },
+    {
+      "Path": "VectorTileRenderer\\SkiaGpuCanvas.cs",
+      "Sha256": "0324EBF6512C5CFADD62260A59EF61F60AB0D01E42FD8723A48F4FDEAAF2D910"
+    },
+    {
+      "Path": "VectorTileRenderer\\CanvasFactory.cs",
+      "Sha256": "58EC1B3037EA13667F53CCDEF14455656478B4940F2EB522A090F834642F5A7B"
+    },
+    {
+      "Path": "tiles\\zurich.pbf.gz",
+      "Sha256": "62DF5D0A6BCA986BDFAB638CB7B2C053E6CB8FD7DB17219E39D23FE9FC95FA80"
+    },
+    {
+      "Path": "styles\\basic-style.json",
+      "Sha256": "A6A5FA5F97B8B2FB1D706A87A1D783A67D22B25DECABF4431B39D1F18FB15825"
+    },
+    {
+      "Path": "styles\\fonts\\OpenSans Regular.ttf",
+      "Sha256": "13C03E22A633919BEB2847C58C8285FB8A735EE97097D7C48FD403F8294B05F8"
+    },
+    {
+      "Path": "styles\\fonts\\Noto Sans Regular.ttf",
+      "Sha256": "9E9B4C53BD25CAD9C04D370F133A5E32D166D0D54E2A9AD6CBA4A31FCD382D5B"
+    }
+  ]
+}

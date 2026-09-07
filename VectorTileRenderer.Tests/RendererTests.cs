@@ -54,6 +54,43 @@ public class RendererTests
         });
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Render_PropagatesFinishFailure_WithoutPublishingSuccess(bool cached)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var failure = new InvalidOperationException("Simulated pixel readback failure");
+        var canvas = new RecordingCanvas { FinishFailure = failure };
+        Renderer.RenderProfile profile = null;
+        Renderer.ProfileSink = value => profile = value;
+        var cachePath = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"failed-render-{Guid.NewGuid():N}");
+
+        try
+        {
+            await Assert.ThatAsync(async () =>
+            {
+                using var bitmap = cached
+                    ? await Renderer.RenderCached(cachePath, style, canvas, 1, 2, 8, 256, 256)
+                    : await Renderer.Render(style, canvas, 1, 2, 8, 256, 256);
+            }, Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo(failure.Message));
+            Assert.That(canvas.FinishCalled, Is.True);
+            Assert.That(profile, Is.Null);
+            if (cached)
+            {
+                Assert.That(Directory.GetFiles(cachePath), Is.Empty);
+            }
+        }
+        finally
+        {
+            // Remove only this test's empty directory; never recursively remove output.
+            if (Directory.Exists(cachePath) && !Directory.EnumerateFileSystemEntries(cachePath).Any())
+            {
+                Directory.Delete(cachePath);
+            }
+        }
+    }
+
     private static Style CreateLineStyle()
     {
         var path = TestAssets.WriteTemporaryStyle("""
@@ -108,6 +145,7 @@ public class RendererTests
         public bool ClipOverflow { get; set; }
         public List<List<Point>> LineStrings { get; } = [];
         public bool FinishCalled { get; private set; }
+        public Exception FinishFailure { get; set; }
 
         public void StartDrawing(double sizeX, double sizeY) { }
         public void DrawBackground(Brush style) { }
@@ -122,6 +160,10 @@ public class RendererTests
         public SKBitmap FinishDrawing()
         {
             FinishCalled = true;
+            if (FinishFailure != null)
+            {
+                throw FinishFailure;
+            }
             return new SKBitmap(1, 1);
         }
     }

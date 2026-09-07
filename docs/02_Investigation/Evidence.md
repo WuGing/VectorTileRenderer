@@ -2,6 +2,10 @@
 
 Inspected 2026-09-05, commit `a4f8ca8`. Paths below are repository-relative; line numbers describe that baseline. These are source observations, not performance measurements.
 
+Follow-up runtime measurements and reproduced GPU failure modes are recorded in
+[GPU validation](Gpu-Validation-2026-09-05.md); the original inventory below remains
+the source-audit snapshot.
+
 ## Explicit TODOs and unfinished branches
 
 | Evidence | Interpretation / disposition |
@@ -60,3 +64,7 @@ npx --no-install gitnexus context SkiaGpuCanvas --repo VectorTileRenderer
 ```
 
 GitHub observations and per-issue applicability are in [GitHub-Tracking](GitHub-Tracking.md).
+
+GPU follow-up: [F-009 parity investigation](Gpu-Parity-2026-09-05.md) records
+production-command replay, source-layer isolation, raw stroke/opacity controls,
+and requested-sample comparisons. The original gates remain failed.

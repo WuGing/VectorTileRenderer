@@ -539,48 +539,36 @@ public class SkiaCanvas : ICanvas
     private static double GetPathLength(List<Point> path)
     {
         double distance = 0;
-        for (var i = 0; i < path.Count - 2; i++)
+        for (var i = 1; i < path.Count; i++)
         {
-            distance += (path[i] - path[i + 1]).Length;
+            distance += (path[i] - path[i - 1]).Length;
         }
-
         return distance;
     }
 
-    private static double GetAbsoluteDiff2Angles(double x, double y, double c = Math.PI)
+    private static bool CheckPathSqueezing(List<Point> path)
     {
-        return c - Math.Abs((Math.Abs(x - y) % 2 * c) - c);
-    }
-
-    private static bool CheckPathSqueezing(List<Point> path, double textHeight)
-    {
-        //double maxCurve = 0;
-        double previousAngle = 0;
-        for (var i = 0; i < path.Count - 2; i++)
+        double? previousAngle = null;
+        for (var i = 1; i < path.Count; i++)
         {
-            var vector = path[i] - path[i + 1];
-
-            var angle = Math.Atan2(vector.Y, vector.X);
-            var angleDiff = Math.Abs(GetAbsoluteDiff2Angles(angle, previousAngle));
-
-            //var length = vector.Length / textHeight;
-            //var curve = angleDiff / length;
-            //maxCurve = Math.Max(curve, maxCurve);
-
-
-            if (angleDiff > Math.PI / 3)
+            var vector = path[i] - path[i - 1];
+            if (vector.X == 0 && vector.Y == 0)
             {
-                return true;
+                continue;
             }
-
+            var angle = Math.Atan2(vector.Y, vector.X);
+            if (previousAngle.HasValue)
+            {
+                var difference = angle - previousAngle.Value;
+                var turn = Math.Abs(Math.Atan2(Math.Sin(difference), Math.Cos(difference)));
+                if (turn > Math.PI / 3)
+                {
+                    return true;
+                }
+            }
             previousAngle = angle;
         }
-
         return false;
-
-        //return 0;
-
-        //return maxCurve;
     }
 
     private void DebugRectangle(Rect rectangle, Color color)
@@ -606,21 +594,22 @@ public class SkiaCanvas : ICanvas
 
     public void DrawTextOnPath(List<Point> geometry, Brush style)
     {
-        // buggggyyyyyy
-        // requires an amazing collision system to work :/
-        // --
-        //return;
-
-        //if (ClipOverflow)
-        //{
+        // ClipLine returns a new list; keep the caller's road geometry unchanged.
         geometry = ClipLine(geometry);
-        if (geometry == null)
+        if (geometry == null || geometry.Count < 2)
         {
             return;
         }
-        //}
 
-        var path = GetPathFromGeometry(geometry);
+        // Read left to right; exactly vertical labels read bottom to top.
+        var first = geometry[0];
+        var last = geometry[geometry.Count - 1];
+        if (first.X > last.X || (first.X == last.X && first.Y < last.Y))
+        {
+            geometry.Reverse();
+        }
+
+        using var path = GetPathFromGeometry(geometry);
         var textPaint = GetTextPaint(style);
         var textFont = GetTextFont(style);
         QualifyTypeface(style, textFont);
@@ -640,7 +629,7 @@ public class SkiaCanvas : ICanvas
             return;
         }
 
-        var pathSqueezed = CheckPathSqueezing(geometry, style.Paint.TextSize);
+        var pathSqueezed = CheckPathSqueezing(geometry);
 
         if (pathSqueezed)
         {

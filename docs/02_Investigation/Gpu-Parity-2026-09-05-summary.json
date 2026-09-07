@@ -1,0 +1,1990 @@
+{
+  "BaselineCommit": "7bc45e1891402ab2fbda5a557ea94e3856fc9085",
+  "TimestampUtc": "2026-09-06T04:12:10.6045569Z",
+  "ExitMeaning": "Diagnostic completed; original parity gates still fail",
+  "Inputs": [
+    {
+      "Path": "VectorTileRenderer.GpuValidation/ParityInvestigation.cs",
+      "Sha256": "5D137EAA9B30E224B7A28289CA21842F4257AB99B5A49FB3CE2E1D169A9072F0"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation/Workload.cs",
+      "Sha256": "B0374EA10368F679A5B4CE31D85BB3E0864AAFFE02527197F935A77C5D6D99DB"
+    },
+    {
+      "Path": "VectorTileRenderer.GpuValidation/PixelComparison.cs",
+      "Sha256": "7B787A310A03B079C207695A1AD480D3B688D865896C5FE192025A34390DAC32"
+    },
+    {
+      "Path": "VectorTileRenderer/SkiaCanvas.cs",
+      "Sha256": "4AC0DB207571F28933F8E7AC83C6DEC4B41C6777495FF13D1594FA7E3DB83867"
+    },
+    {
+      "Path": "VectorTileRenderer/SkiaGpuCanvas.cs",
+      "Sha256": "0678F0D97ECBBD0ED6F225182BCA68FDAF523F15DDEEC585883612F2696CEDEC"
+    },
+    {
+      "Path": "styles/basic-style.json",
+      "Sha256": "A6A5FA5F97B8B2FB1D706A87A1D783A67D22B25DECABF4431B39D1F18FB15825"
+    }
+  ],
+  "Results": [
+    {
+      "Case": "Environment",
+      "Vendor": "NVIDIA Corporation",
+      "Renderer": "NVIDIA GeForce RTX 4070 Ti/PCIe/SSE2",
+      "Version": "4.6.0 NVIDIA 616.56",
+      "Runtime": ".NET 10.0.11",
+      "OS": "Microsoft Windows 10.0.26200",
+      "Skia": "3.119.0.0"
+    },
+    {
+      "Case": "LocalDataset",
+      "File": "osm-2020-02-10-v3.11_us_colorado.mbtiles",
+      "Bytes": 260767744,
+      "Metadata": {
+        "attribution": "<a href=\"https://www.maptiler.com/copyright/\" target=\"_blank\">&copy; MapTiler</a> <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">&copy; OpenStreetMap contributors</a>",
+        "bounds": "-109.0631,36.98943,-102.041,41.00372",
+        "center": "-105.55205000000001,38.996575,14",
+        "description": "Region Colorado extract from https://openmaptiles.com",
+        "format": "pbf",
+        "maxzoom": "14",
+        "minzoom": "0",
+        "name": "OpenMapTiles",
+        "scheme": "tms",
+        "id": "openmaptiles",
+        "maskLevel": "5",
+        "planettime": "1581292800000",
+        "mtime": "1581445940000",
+        "version": "3.11",
+        "basename": "us_colorado.mbtiles"
+      },
+      "Selection": "Largest compressed tile at each selected native zoom, ties resolved by column/row; stress sample, not whole-database coverage"
+    },
+    {
+      "Case": "SelectedTile",
+      "X": 213,
+      "TmsY": 635,
+      "Zoom": 10,
+      "CompressedBytes": 103247,
+      "FeatureCount": 9450,
+      "PointCount": 22456,
+      "Layers": [
+        {
+          "Name": "water",
+          "Features": 63
+        },
+        {
+          "Name": "waterway",
+          "Features": 5
+        },
+        {
+          "Name": "landcover",
+          "Features": 81
+        },
+        {
+          "Name": "landuse",
+          "Features": 227
+        },
+        {
+          "Name": "mountain_peak",
+          "Features": 8
+        },
+        {
+          "Name": "park",
+          "Features": 12
+        },
+        {
+          "Name": "boundary",
+          "Features": 51
+        },
+        {
+          "Name": "aeroway",
+          "Features": 136
+        },
+        {
+          "Name": "transportation",
+          "Features": 8775
+        },
+        {
+          "Name": "transportation_name",
+          "Features": 33
+        },
+        {
+          "Name": "place",
+          "Features": 53
+        },
+        {
+          "Name": "aerodrome_label",
+          "Features": 6
+        }
+      ]
+    },
+    {
+      "Case": "SelectedTile",
+      "X": 853,
+      "TmsY": 2541,
+      "Zoom": 12,
+      "CompressedBytes": 166981,
+      "FeatureCount": 14766,
+      "PointCount": 34835,
+      "Layers": [
+        {
+          "Name": "water",
+          "Features": 54
+        },
+        {
+          "Name": "waterway",
+          "Features": 21
+        },
+        {
+          "Name": "landcover",
+          "Features": 17
+        },
+        {
+          "Name": "landuse",
+          "Features": 118
+        },
+        {
+          "Name": "park",
+          "Features": 2
+        },
+        {
+          "Name": "boundary",
+          "Features": 1
+        },
+        {
+          "Name": "transportation",
+          "Features": 14452
+        },
+        {
+          "Name": "transportation_name",
+          "Features": 50
+        },
+        {
+          "Name": "place",
+          "Features": 25
+        },
+        {
+          "Name": "poi",
+          "Features": 26
+        }
+      ]
+    },
+    {
+      "Case": "SelectedTile",
+      "X": 3411,
+      "TmsY": 10167,
+      "Zoom": 14,
+      "CompressedBytes": 384584,
+      "FeatureCount": 25089,
+      "PointCount": 156288,
+      "Layers": [
+        {
+          "Name": "waterway",
+          "Features": 25
+        },
+        {
+          "Name": "landcover",
+          "Features": 7919
+        },
+        {
+          "Name": "landuse",
+          "Features": 53
+        },
+        {
+          "Name": "transportation",
+          "Features": 1872
+        },
+        {
+          "Name": "building",
+          "Features": 8853
+        },
+        {
+          "Name": "water_name",
+          "Features": 6
+        },
+        {
+          "Name": "transportation_name",
+          "Features": 90
+        },
+        {
+          "Name": "place",
+          "Features": 8
+        },
+        {
+          "Name": "housenumber",
+          "Features": 5444
+        },
+        {
+          "Name": "poi",
+          "Features": 819
+        }
+      ]
+    },
+    {
+      "Case": "Capture",
+      "Name": "synthetic-geometry-all",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-all",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 1.9932937622070312,
+        "PixelsOver32Percent": 1.16119384765625,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 31174,
+        "CpuFlatInteriorChangedPixels": 1102,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 55,
+        "CpuFlatInteriorOverOne": 1102,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 9302,
+          "0,1,0,0": 604,
+          "-1,-1,0,0": 429,
+          "0,1,1,0": 386,
+          "1,2,0,0": 352
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-all",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 2.224987030029297,
+        "PixelsOver32Percent": 1.26495361328125,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 31733,
+        "CpuFlatInteriorChangedPixels": 1102,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 74,
+        "CpuFlatInteriorOverOne": 1102,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 9314,
+          "-6,-3,-5,0": 422,
+          "-1,1,-1,0": 351,
+          "5,4,4,0": 339,
+          "0,1,0,0": 331
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-all",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 1.6899948120117188,
+        "PixelsOver32Percent": 0.24871826171875,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 31886,
+        "CpuFlatInteriorChangedPixels": 1102,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 52,
+        "CpuFlatInteriorOverOne": 1102,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 9285,
+          "-6,-3,-5,0": 421,
+          "0,1,0,0": 394,
+          "-1,1,-1,0": 347,
+          "5,4,4,0": 335
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "synthetic-geometry-areas",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-areas",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.24405288696289062,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 25457,
+        "CpuFlatInteriorChangedPixels": 13800,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 23,
+        "CpuFlatInteriorOverOne": 13800,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 20041,
+          "-1,-1,0,0": 745,
+          "1,2,0,0": 715,
+          "-1,1,-1,0": 695,
+          "0,1,0,0": 556
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-areas",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.5600128173828125,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 26569,
+        "CpuFlatInteriorChangedPixels": 13800,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 22,
+        "CpuFlatInteriorOverOne": 13800,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 20041,
+          "-6,-3,-5,0": 745,
+          "5,4,4,0": 715,
+          "-5,-2,-5,0": 695,
+          "-1,1,-1,0": 695
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-areas",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.3817291259765625,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 26569,
+        "CpuFlatInteriorChangedPixels": 13800,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 13,
+        "CpuFlatInteriorOverOne": 13800,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 20041,
+          "-6,-3,-5,0": 745,
+          "5,4,4,0": 715,
+          "-5,-2,-5,0": 695,
+          "-1,1,-1,0": 695
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "synthetic-geometry-roads",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-roads",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 2.3446502685546875,
+        "PixelsOver32Percent": 2.12860107421875,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 18777,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 51,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 314,
+          "-2,-5,-6,0": 285,
+          "-1,-2,-2,0": 273,
+          "-1,-4,-4,0": 268,
+          "3,7,8,0": 254
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-roads",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 2.3473243713378906,
+        "PixelsOver32Percent": 2.1240234375,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 18775,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 74,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 320,
+          "-1,-4,-4,0": 276,
+          "-1,-2,-2,0": 276,
+          "-2,-5,-6,0": 263,
+          "3,7,8,0": 261
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-roads",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 1.8037071228027344,
+        "PixelsOver32Percent": 0.30517578125,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 18982,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 52,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,2,2,0": 308,
+          "-2,-5,-6,0": 305,
+          "3,7,8,0": 296,
+          "-1,-2,-2,0": 296,
+          "1,1,1,0": 277
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "synthetic-geometry-labels",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-labels",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.0041656494140625,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 731,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 2,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,1,0,0": 179,
+          "0,0,-1,0": 79,
+          "0,0,1,0": 75,
+          "0,1,-1,0": 64,
+          "0,1,1,0": 56
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-labels",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.0041656494140625,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 731,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 2,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,1,0,0": 179,
+          "0,0,-1,0": 79,
+          "0,0,1,0": 75,
+          "0,1,-1,0": 64,
+          "0,1,1,0": 56
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "synthetic-geometry-labels",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.0041656494140625,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 731,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 2,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,1,0,0": 179,
+          "0,0,-1,0": 79,
+          "0,0,1,0": 75,
+          "0,1,-1,0": 64,
+          "0,1,1,0": 56
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-all",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-all",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 1.8807487487792969,
+        "PixelsOver32Percent": 0.604248046875,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 47869,
+        "CpuFlatInteriorChangedPixels": 331,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 96,
+        "CpuFlatInteriorOverOne": 1,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 3215,
+          "1,1,1,0": 1737,
+          "-1,-1,-1,0": 1344,
+          "0,0,1,0": 1008,
+          "-1,0,-2,0": 947
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-all",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 1.9858436584472656,
+        "PixelsOver32Percent": 0.5767822265625,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 47685,
+        "CpuFlatInteriorChangedPixels": 163,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 96,
+        "CpuFlatInteriorOverOne": 1,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 2908,
+          "1,1,1,0": 1446,
+          "-1,-1,-1,0": 979,
+          "1,1,2,0": 879,
+          "2,1,2,0": 857
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-all",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 1.810333251953125,
+        "PixelsOver32Percent": 0.5767822265625,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 48221,
+        "CpuFlatInteriorChangedPixels": 163,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 96,
+        "CpuFlatInteriorOverOne": 1,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 2921,
+          "1,1,1,0": 1731,
+          "-1,-1,-1,0": 1348,
+          "1,1,2,0": 1035,
+          "-1,0,-2,0": 889
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landuse",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landuse",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.0128631591796875,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 2564,
+        "CpuFlatInteriorChangedPixels": 1343,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 3,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,1,0,0": 1612,
+          "-1,0,0,0": 134,
+          "-1,-1,0,0": 101,
+          "0,-1,0,0": 82,
+          "1,1,0,0": 65
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landuse",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.013355255126953125,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 2572,
+        "CpuFlatInteriorChangedPixels": 1343,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 3,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,1,0,0": 1588,
+          "-1,0,0,0": 335,
+          "-1,-1,-1,0": 102,
+          "-1,-1,0,0": 61,
+          "0,-1,-1,0": 61
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landuse",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.012737274169921875,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 2575,
+        "CpuFlatInteriorChangedPixels": 1343,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 2,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,1,0,0": 1594,
+          "-1,0,0,0": 326,
+          "-1,0,-1,0": 97,
+          "-1,-1,-1,0": 94,
+          "-1,-1,0,0": 74
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landcover",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landcover",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 1.0395317077636719,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 46532,
+        "CpuFlatInteriorChangedPixels": 1284,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 27,
+        "CpuFlatInteriorOverOne": 5,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 4655,
+          "1,0,-1,0": 3385,
+          "0,0,1,0": 2613,
+          "1,0,0,0": 1972,
+          "2,1,2,0": 1901
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landcover",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.8775177001953125,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 44133,
+        "CpuFlatInteriorChangedPixels": 1289,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 17,
+        "CpuFlatInteriorOverOne": 3,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 4381,
+          "1,0,-1,0": 3538,
+          "0,0,1,0": 2548,
+          "0,1,-1,0": 2217,
+          "1,0,0,0": 2086
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-landcover",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.8864669799804688,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 44507,
+        "CpuFlatInteriorChangedPixels": 1289,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 17,
+        "CpuFlatInteriorOverOne": 3,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 4484,
+          "1,0,-1,0": 3459,
+          "0,0,1,0": 2584,
+          "1,0,0,0": 2011,
+          "2,1,2,0": 1955
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-park",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-park",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-park",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-park",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-water",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-water",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-water",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-water",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-waterway",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-waterway",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.008087158203125,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 258,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 21,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 31,
+          "6,3,0,0": 20,
+          "-5,-2,1,0": 20,
+          "-5,-2,0,0": 17,
+          "-3,-2,0,0": 5
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-waterway",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.00748443603515625,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 212,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 26,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,0,-1,0": 64,
+          "6,3,0,0": 23,
+          "-5,-2,1,0": 20,
+          "-5,-2,0,0": 17,
+          "6,2,-1,0": 6
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-waterway",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.0098724365234375,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 256,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 21,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "10,4,-1,0": 38,
+          "0,0,-1,0": 33,
+          "-11,-5,1,0": 30,
+          "-5,-2,1,0": 26,
+          "6,3,0,0": 11
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.7008171081542969,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 30483,
+        "CpuFlatInteriorChangedPixels": 2,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 20,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,-1,-2,0": 2053,
+          "-1,-1,-1,0": 2025,
+          "1,1,1,0": 1393,
+          "1,1,2,0": 1362,
+          "0,0,-1,0": 1205
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.800201416015625,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 31091,
+        "CpuFlatInteriorChangedPixels": 2,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 21,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,-1,-1,0": 1816,
+          "-1,-1,-2,0": 1748,
+          "1,1,2,0": 1602,
+          "-2,-2,-4,0": 1105,
+          "-1,-2,-2,0": 1028
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.6802444458007812,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 31178,
+        "CpuFlatInteriorChangedPixels": 2,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 15,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,-1,-2,0": 2331,
+          "1,1,2,0": 1975,
+          "-1,-1,-1,0": 1822,
+          "-2,-2,-4,0": 1589,
+          "0,0,-1,0": 1164
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-building",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-building",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-building",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-building",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-housenumber",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-housenumber",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-housenumber",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-housenumber",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aeroway",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aeroway",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aeroway",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aeroway",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-boundary",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-boundary",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-boundary",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-boundary",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-poi",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-poi",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-poi",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-poi",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aerodrome_label",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aerodrome_label",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aerodrome_label",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-aerodrome_label",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0,
+        "PixelsOver32Percent": 0,
+        "Passed": false
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation_name",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation_name",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.5468406677246094,
+        "PixelsOver32Percent": 0.58746337890625,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 3247,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 96,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 530,
+          "16,16,16,0": 208,
+          "1,2,2,0": 208,
+          "32,32,32,0": 203,
+          "-3,-3,-5,0": 165
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation_name",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.546478271484375,
+        "PixelsOver32Percent": 0.58746337890625,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 3631,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 96,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 530,
+          "0,-1,0,0": 403,
+          "16,16,16,0": 206,
+          "32,32,32,0": 203,
+          "-2,-2,-3,0": 197
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-transportation_name",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.5608787536621094,
+        "PixelsOver32Percent": 0.58746337890625,
+        "Passed": true
+      },
+      "GpuMatchesProduction": false,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 3875,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 96,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 530,
+          "-3,-3,-5,0": 301,
+          "3,3,5,0": 290,
+          "0,-1,0,0": 214,
+          "16,16,16,0": 201
+        }
+      }
+    },
+    {
+      "Case": "Capture",
+      "Name": "mbtiles-z14-3411-10167-warm-source-place",
+      "CpuMatchesProduction": true,
+      "GpuChecked": true
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-place",
+      "RequestedSamples": 0,
+      "comparison": {
+        "MeanChannelError": 0.0057373046875,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 789,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 1,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,0,-1,0": 249,
+          "1,1,1,0": 199,
+          "1,0,0,0": 102,
+          "0,0,-1,0": 81,
+          "-1,-1,0,0": 66
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-place",
+      "RequestedSamples": 4,
+      "comparison": {
+        "MeanChannelError": 0.0057373046875,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 789,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 1,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,0,-1,0": 249,
+          "1,1,1,0": 199,
+          "1,0,0,0": 102,
+          "0,0,-1,0": 81,
+          "-1,-1,0,0": 66
+        }
+      }
+    },
+    {
+      "Case": "LayerReplay",
+      "Name": "mbtiles-z14-3411-10167-warm-source-place",
+      "RequestedSamples": 8,
+      "comparison": {
+        "MeanChannelError": 0.0057373046875,
+        "PixelsOver32Percent": 0,
+        "Passed": true
+      },
+      "GpuMatchesProduction": true,
+      "RepeatExact": true,
+      "Metrics": {
+        "ChangedPixels": 789,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 1,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,0,-1,0": 249,
+          "1,1,1,0": 199,
+          "1,0,0,0": 102,
+          "0,0,-1,0": 81,
+          "-1,-1,0,0": 66
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": false,
+      "Width": 1,
+      "Outline": false,
+      "comparison": {
+        "MeanChannelError": 0.20381927490234375,
+        "PixelsOver32Percent": 0.1983642578125,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 130,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 188,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "64,159,188,0": 82,
+          "-64,-159,-188,0": 48
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": false,
+      "Width": 1,
+      "Outline": true,
+      "comparison": {
+        "MeanChannelError": 0.20225143432617188,
+        "PixelsOver32Percent": 0.19683837890625,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 129,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 188,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "64,159,188,0": 81,
+          "-64,-159,-188,0": 48
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": false,
+      "Width": 2,
+      "Outline": false,
+      "comparison": {
+        "MeanChannelError": 0.2822113037109375,
+        "PixelsOver32Percent": 0.274658203125,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 180,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 188,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "64,159,188,0": 96,
+          "-64,-159,-188,0": 84
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": false,
+      "Width": 2,
+      "Outline": true,
+      "comparison": {
+        "MeanChannelError": 0.288482666015625,
+        "PixelsOver32Percent": 0.28076171875,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 184,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 188,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-64,-159,-188,0": 95,
+          "64,159,188,0": 89
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": false,
+      "Width": 4,
+      "Outline": false,
+      "comparison": {
+        "MeanChannelError": 0.3747138977050781,
+        "PixelsOver32Percent": 0.36468505859375,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 239,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 188,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "64,159,188,0": 165,
+          "-64,-159,-188,0": 74
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": false,
+      "Width": 4,
+      "Outline": true,
+      "comparison": {
+        "MeanChannelError": 0.3825531005859375,
+        "PixelsOver32Percent": 0.372314453125,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 244,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 188,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "64,159,188,0": 163,
+          "-64,-159,-188,0": 81
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": true,
+      "Width": 1,
+      "Outline": false,
+      "comparison": {
+        "MeanChannelError": 0.30941009521484375,
+        "PixelsOver32Percent": 0.09307861328125,
+        "Passed": true
+      },
+      "Metrics": {
+        "ChangedPixels": 17862,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 59,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "0,-1,-1,0": 1360,
+          "1,2,2,0": 1141,
+          "1,1,1,0": 1027,
+          "-1,-2,-2,0": 848,
+          "0,0,-1,0": 773
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": true,
+      "Width": 1,
+      "Outline": true,
+      "comparison": {
+        "MeanChannelError": 2.359607696533203,
+        "PixelsOver32Percent": 2.18353271484375,
+        "Passed": false
+      },
+      "Metrics": {
+        "ChangedPixels": 18777,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 53,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,2,2,0": 289,
+          "-2,-5,-6,0": 287,
+          "1,1,1,0": 251,
+          "-1,-4,-5,0": 243,
+          "2,5,6,0": 239
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": true,
+      "Width": 2,
+      "Outline": false,
+      "comparison": {
+        "MeanChannelError": 2.3446502685546875,
+        "PixelsOver32Percent": 2.12860107421875,
+        "Passed": false
+      },
+      "Metrics": {
+        "ChangedPixels": 18777,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 51,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 314,
+          "-2,-5,-6,0": 285,
+          "-1,-2,-2,0": 273,
+          "-1,-4,-4,0": 268,
+          "3,7,8,0": 254
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": true,
+      "Width": 2,
+      "Outline": true,
+      "comparison": {
+        "MeanChannelError": 2.3446502685546875,
+        "PixelsOver32Percent": 2.12860107421875,
+        "Passed": false
+      },
+      "Metrics": {
+        "ChangedPixels": 18777,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 51,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "1,1,1,0": 314,
+          "-2,-5,-6,0": 285,
+          "-1,-2,-2,0": 273,
+          "-1,-4,-4,0": 268,
+          "3,7,8,0": 254
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": true,
+      "Width": 4,
+      "Outline": false,
+      "comparison": {
+        "MeanChannelError": 2.390827178955078,
+        "PixelsOver32Percent": 2.17437744140625,
+        "Passed": false
+      },
+      "Metrics": {
+        "ChangedPixels": 18918,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 73,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,-2,-2,0": 296,
+          "1,1,1,0": 279,
+          "-1,-4,-4,0": 277,
+          "2,3,4,0": 266,
+          "3,7,8,0": 266
+        }
+      }
+    },
+    {
+      "Case": "RawSkia",
+      "AA": true,
+      "Width": 4,
+      "Outline": true,
+      "comparison": {
+        "MeanChannelError": 2.390827178955078,
+        "PixelsOver32Percent": 2.17437744140625,
+        "Passed": false
+      },
+      "Metrics": {
+        "ChangedPixels": 18918,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 73,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {
+          "-1,-2,-2,0": 296,
+          "1,1,1,0": 279,
+          "-1,-4,-4,0": 277,
+          "2,3,4,0": 266,
+          "3,7,8,0": 266
+        }
+      }
+    },
+    {
+      "Case": "SolidRectangle",
+      "Alpha": 255,
+      "CpuInterior": "#ff72ab82",
+      "GpuInterior": "#ff72ab82",
+      "Metrics": {
+        "ChangedPixels": 0,
+        "CpuFlatInteriorChangedPixels": 0,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 0,
+        "CpuFlatInteriorOverOne": 0,
+        "CommonChangedDeltas": {}
+      }
+    },
+    {
+      "Case": "SolidRectangle",
+      "Alpha": 204,
+      "CpuInterior": "#ff89b798",
+      "GpuInterior": "#ff89b998",
+      "Metrics": {
+        "ChangedPixels": 36864,
+        "CpuFlatInteriorChangedPixels": 36100,
+        "AlphaChangedPixels": 0,
+        "MaximumChannelError": 2,
+        "CpuFlatInteriorOverOne": 36100,
+        "CommonChangedDeltas": {
+          "0,2,0,0": 36864
+        }
+      }
+    }
+  ]
+}

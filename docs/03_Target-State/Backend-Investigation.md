@@ -2,6 +2,8 @@
 
 Proposal, 2026-09-05. Related: F-001, F-007, F-008; R-001, R-006, R-007. No alternative engine was installed or benchmarked in this audit.
 
+Follow-up: [Skia GPU validation results](../02_Investigation/Gpu-Validation-2026-09-05.md) are now available. Hosted hardware drawing works on the tested Windows/NVIDIA system; production defects and one image gate remain. No alternative engine has been tested.
+
 ## Recommendation
 
 First validate host-owned Skia GPU rendering and measure complete tile requests. The present implementation does not establish that Skia's GPU renderer is slow or broken. It establishes gaps in this project's hosting, fallback reporting and readback checks. Replacing the rasterizer would also leave our style evaluator, label placement and disk cache in place.

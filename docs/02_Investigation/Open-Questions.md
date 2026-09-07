@@ -35,6 +35,11 @@ A successful context probe is insufficient to guarantee drawing or speed.
 How to answer:
 - Run the R-001 matrix and record actual backend, pixel comparison, readback status, context recreation and timings.
 
+Partial answer: [the Windows experiment](Gpu-Validation-2026-09-05.md) proves an
+explicit WGL owner and captured continuation pump work on the RTX 4070 Ti. No
+measured case reached the predeclared 10% total speedup. Production host integration,
+failure policy, other hardware and the failed image case remain open.
+
 ## Q-002: Should the product produce bitmap tiles or present a GPU map surface?
 
 Status: Open

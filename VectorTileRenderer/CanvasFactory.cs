@@ -9,10 +9,6 @@ public enum RenderBackend
 
 public static class CanvasFactory
 {
-    private static readonly object backendProbeLock = new();
-    private static bool backendProbed;
-    private static bool gpuAvailable;
-
     public static ICanvas Create(RenderBackend backend = RenderBackend.Auto)
     {
         if (backend == RenderBackend.Cpu)
@@ -20,31 +16,8 @@ public static class CanvasFactory
             return new SkiaCanvas();
         }
 
-        if (backend == RenderBackend.Auto)
-        {
-            lock (backendProbeLock)
-            {
-                if (!backendProbed)
-                {
-                    var probe = SkiaGpuCanvas.TryCreate();
-                    gpuAvailable = probe.IsGpuEnabled;
-                    backendProbed = true;
-
-                    if (gpuAvailable)
-                    {
-                        return probe;
-                    }
-
-                    return new SkiaCanvas();
-                }
-
-                if (!gpuAvailable)
-                {
-                    return new SkiaCanvas();
-                }
-            }
-        }
-
+        // GL availability belongs to the calling thread's current native context.
+        // A failed probe must not disable GPU selection for later calls or hosts.
         var gpuCanvas = SkiaGpuCanvas.TryCreate();
         if (gpuCanvas.IsGpuEnabled)
         {
