@@ -17,6 +17,15 @@ small and explain their provenance.
 MBTiles fixtures. `VectorTileRenderer.Benchmarks/` contains isolated
 BenchmarkDotNet experiments. Both belong to `VectorTileRenderer.sln`.
 
+`VectorTileRenderer.GpuValidation/` is a Windows x64 executable for explicit GPU
+correctness/performance experiments. It builds with the solution but is not run by
+`dotnet test`; see its README for exit codes, hardware requirements and measurement
+limits. Keep hardware tests separate from the portable regression suite.
+
+`VectorTileRenderer.Direct2DSpike/` is an isolated, non-packable Windows alternative
+backend experiment. Its README defines unsupported text/style cases and geometry-only
+timing scope. Do not promote it into CanvasFactory based on a successful process exit.
+
 ## Build, Test, and Development Commands
 
 Use .NET SDK 10, as configured in CI:

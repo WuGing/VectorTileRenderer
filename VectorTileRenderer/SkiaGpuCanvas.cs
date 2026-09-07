@@ -65,11 +65,11 @@ public class SkiaGpuCanvas(GRContext context) : SkiaCanvas
         }
 
         using var image = surface.Snapshot();
-        if (image == null)
+        if (image == null || !image.ReadPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0))
         {
-            return;
+            // The GPU commands cannot be replayed on the CPU here. Fail this
+            // request instead of returning (and potentially caching) invalid pixels.
+            throw new InvalidOperationException("GPU pixel readback failed. Start a new render with a valid context or CPU canvas.");
         }
-
-        image.ReadPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0);
     }
 }

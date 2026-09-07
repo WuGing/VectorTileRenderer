@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Linked library clipping source has nullable analysis disabled. New adapter opts in. -->
+    <Nullable>annotations</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../VectorTileRenderer/VectorTileRenderer.csproj" />
+    <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <Compile Include="../VectorTileRenderer.GpuValidation/Workload.cs" Link="Shared/Workload.cs" />
+    <Compile Include="../VectorTileRenderer.GpuValidation/MbTilesWorkloads.cs" Link="Shared/MbTilesWorkloads.cs" />
+    <Compile Include="../VectorTileRenderer.GpuValidation/RenderThread.cs" Link="Shared/RenderThread.cs" />
+    <Compile Include="../VectorTileRenderer.GpuValidation/WindowsGlContext.cs" Link="Shared/WindowsGlContext.cs" />
+    <Compile Include="../VectorTileRenderer.GpuValidation/ProbeCanvas.cs" Link="Shared/ProbeCanvas.cs" />
+    <Compile Include="../VectorTileRenderer.GpuValidation/PixelComparison.cs" Link="Shared/PixelComparison.cs" />
+    <Compile Include="../VectorTileRenderer/LineClipper.cs" Link="Shared/LineClipper.cs" />
+  </ItemGroup>
+</Project>

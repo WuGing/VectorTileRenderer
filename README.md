@@ -226,11 +226,21 @@ Notes:
 - `Auto` probes GPU availability and falls back to CPU when unavailable.
 - For production use today, benchmark your own workload and keep CPU as the baseline.
 
-The factory does not create a native host OpenGL context. `Auto` caches its first
-availability probe globally, and the current GPU readback does not check success.
-GPU correctness and performance were not runtime-validated in the September 2026
-audit. See the [GPU validation matrix and alternative engines](docs/03_Target-State/Backend-Investigation.md)
+The factory does not create a native host OpenGL context. `Auto` probes the calling
+thread's current context on each factory call. If GPU snapshot/readback fails,
+`FinishDrawing` throws `InvalidOperationException`; `Render` and cache misses in
+`RenderCached` propagate that failure. Start a new request with a valid hosted
+context or a CPU canvas. A failed readback does not silently retry on the CPU.
+See the [validated fixes](docs/02_Investigation/Gpu-Failure-Fixes-2026-09-05.md).
+The [Windows GPU experiment](docs/02_Investigation/Gpu-Validation-2026-09-05.md)
+proved hosted GPU drawing and reproduced the original defects;
+11 of 12 image comparisons passed the declared tolerance. This does not validate
+GPU use in the demos. See the [GPU validation matrix and alternative engines](docs/03_Target-State/Backend-Investigation.md)
 before relying on this mode or choosing a replacement for SkiaSharp.
+
+The [large local Colorado test](docs/02_Investigation/Gpu-Colorado-2026-09-05.md)
+also compares heavy MBTiles tiles with reused and fresh providers. The harness
+accepts an optional local database path; see its [instructions](VectorTileRenderer.GpuValidation/README.md).
 
 ## Contribution
 

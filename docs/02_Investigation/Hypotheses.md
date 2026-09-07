@@ -24,7 +24,13 @@ What still needs to be verified:
 Evidence so far:
 - Renderer.RenderCached and RenderProfile; SkiaGpuCanvas.TryCreate/OnBeforeFinishDrawing.
 - Existing benchmarks cover isolated operations, not proof of GPU speed.
+- The [Windows GPU experiment](Gpu-Validation-2026-09-05.md) measures separate finish/readback and complete render-plus-PNG costs on one GPU. It supports workload-specific conclusions only; concurrent cache contention, true cold disk and demo latency remain unmeasured.
 
 Next validation step:
 - Execute R-001 and R-006 with identical tiles/styles, fixed concurrency, CPU baseline, actual GPU state, allocation data and median/p95 complete-request latency. Record readback and PNG/cache time separately.
+
+The [Colorado follow-up](Gpu-Colorado-2026-09-05.md) supports cache/decode and
+encoding costs as material on the selected heavy tiles. The global cache-lock
+contention and prefetch portions of this hypothesis remain untested. Next measure
+distinct-tile sequences and bounded cache growth rather than only repeated hits.
 

@@ -1,0 +1,201 @@
+{
+  "BaselineCommit": "7bc45e1891402ab2fbda5a557ea94e3856fc9085",
+  "BeforeTimestampUtc": "2026-09-06T00:22:13.1379242Z",
+  "AfterTimestampUtc": "2026-09-06T00:23:01.0422122Z",
+  "Environment": [
+    {
+      "Case": "Environment",
+      "Runtime": ".NET 10.0.11",
+      "OS": "Microsoft Windows 10.0.26200",
+      "Architecture": "X64",
+      "SkiaSharp": "3.119.0.0",
+      "LogicalProcessors": 24,
+      "OwnerThread": 2,
+      "Iterations": 5,
+      "MinimumUsefulSpeedup": 1.1,
+      "Concurrency": 1,
+      "CachePolicy": "OS file cache uncontrolled; decoded source reused; image hit measured separately"
+    },
+    {
+      "Case": "WGL",
+      "Vendor": "NVIDIA Corporation",
+      "Renderer": "NVIDIA GeForce RTX 4070 Ti/PCIe/SSE2",
+      "Version": "4.6.0 NVIDIA 616.56",
+      "IsHardwarePixelFormat": true,
+      "StartupMs": 149.7197
+    }
+  ],
+  "Before": [
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Surface exists before abandonment",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Failed readback rejects bitmap, attempt 1",
+      "Passed": false
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Failed readback rejects bitmap, attempt 2",
+      "Passed": false
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Abandoned context starts a new correct CPU render",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Auto recovers after initial no-context failure with GPU pixels",
+      "Passed": false
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Auto on context-free worker renders CPU after hosted success",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Worker fallback does not poison later hosted Auto",
+      "Passed": false
+    }
+  ],
+  "After": [
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Surface exists before abandonment",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Failed readback rejects bitmap, attempt 1",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Failed readback rejects bitmap, attempt 2",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Abandoned context starts a new correct CPU render",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Auto recovers after initial no-context failure with GPU pixels",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Auto on context-free worker renders CPU after hosted success",
+      "Passed": true
+    },
+    {
+      "Case": "GpuFailureRegression",
+      "Name": "Worker fallback does not poison later hosted Auto",
+      "Passed": true
+    }
+  ],
+  "PixelParity": [
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-geometry",
+      "Size": 256,
+      "MeanChannelError": 1.9932937622070312,
+      "PixelsOver32Percent": 1.16119384765625,
+      "Passed": false
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-geometry",
+      "Size": 512,
+      "MeanChannelError": 1.033555030822754,
+      "PixelsOver32Percent": 0.3696441650390625,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-geometry",
+      "Size": 1024,
+      "MeanChannelError": 0.6939647197723389,
+      "PixelsOver32Percent": 0.3493309020996094,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-text",
+      "Size": 256,
+      "MeanChannelError": 0.3583641052246094,
+      "PixelsOver32Percent": 0.091552734375,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-text",
+      "Size": 512,
+      "MeanChannelError": 0.26349830627441406,
+      "PixelsOver32Percent": 0.0507354736328125,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "synthetic-text",
+      "Size": 1024,
+      "MeanChannelError": 0.22520184516906738,
+      "PixelsOver32Percent": 0.017452239990234375,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-decoded",
+      "Size": 256,
+      "MeanChannelError": 1.0879783630371094,
+      "PixelsOver32Percent": 0.286865234375,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-decoded",
+      "Size": 512,
+      "MeanChannelError": 0.9668245315551758,
+      "PixelsOver32Percent": 0.5435943603515625,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-decoded",
+      "Size": 1024,
+      "MeanChannelError": 0.7790205478668213,
+      "PixelsOver32Percent": 0.4134178161621094,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-file-decode",
+      "Size": 256,
+      "MeanChannelError": 1.0879783630371094,
+      "PixelsOver32Percent": 0.286865234375,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-file-decode",
+      "Size": 512,
+      "MeanChannelError": 0.9668245315551758,
+      "PixelsOver32Percent": 0.5435943603515625,
+      "Passed": true
+    },
+    {
+      "Case": "PixelParity",
+      "Workload": "zurich-file-decode",
+      "Size": 1024,
+      "MeanChannelError": 0.7790205478668213,
+      "PixelsOver32Percent": 0.4134178161621094,
+      "Passed": true
+    }
+  ],
+  "ExitCode": 1
+}

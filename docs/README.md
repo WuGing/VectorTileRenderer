@@ -2,6 +2,16 @@
 
 Start with [the review plan](02_Investigation/Review-Plan.md), [the evidence inventory](02_Investigation/Evidence.md), and [the GPU/backend investigation](03_Target-State/Backend-Investigation.md). This documentation records the audit of commit `a4f8ca87dbb7870cbae9ca5d61881b0f3e0cedcc` on 2026-09-05.
 
+The follow-up [GPU runtime experiment](02_Investigation/Gpu-Validation-2026-09-05.md)
+now includes measured results against library baseline 7bc45e1.
+
+[Large local Colorado MBTiles results](02_Investigation/Gpu-Colorado-2026-09-05.md)
+extend that experiment with heavy native tiles and warm/fresh provider comparisons.
+
+The [pixel-parity diagnosis](02_Investigation/Gpu-Parity-2026-09-05.md) isolates
+the remaining 256px mismatches to Skia backend edge/blend behavior and records
+the unchanged acceptance limits.
+
 ## Folder ownership
 
 | Folder | Purpose |

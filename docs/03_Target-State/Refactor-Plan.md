@@ -1,13 +1,13 @@
 # Proposed work
 
-These are proposals, not approved implementation or remotely published issues. Sequence R-001/R-002 first; use evidence to prioritize the rest.
+R-001's isolated validation experiment and readback/Auto fixes were authorized and implemented locally; host/thread integration and parity remain. Other items remain proposals except the validated street-label follow-up under R-003. None has been remotely published as an issue.
 
 ## R-001: Validate and define GPU hosting
 
-Status: Proposed
+Status: In progress
 Priority: High
 Area: GPU / Hosting
-Related findings: F-001, F-007
+Related findings: F-001, F-007, F-009
 GitHub Issue:
 Owner:
 Target milestone:
@@ -15,8 +15,13 @@ Target milestone:
 Objective:
 Prove real GPU rendering and establish a reliable fallback contract.
 
+The isolated harness has completed its first runtime experiment. See [measured results](../02_Investigation/Gpu-Validation-2026-09-05.md) and the [validated readback/Auto fixes](../02_Investigation/Gpu-Failure-Fixes-2026-09-05.md). This status remains In progress because production hosting/thread affinity and the failed image gate are unresolved.
+
 Implementation outline:
 - Start with the matrix in Backend-Investigation.md. Bind context ownership to the host/render thread; detect surface and readback failure; report actual backend.
+- [Parity diagnosis](../02_Investigation/Gpu-Parity-2026-09-05.md) isolates backend
+  edge/blend differences. Evaluate primitive-aware acceptance and backend references;
+  do not simply widen the original whole-image tolerance.
 
 Risks:
 - Context/thread affinity, device loss, changed failure behavior.
