@@ -24,6 +24,7 @@ public static class CanvasFactory
             return gpuCanvas;
         }
 
+        gpuCanvas.Dispose();
         return new SkiaCanvas();
     }
 }

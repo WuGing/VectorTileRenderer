@@ -2,9 +2,22 @@ using SkiaSharp;
 
 namespace WuGing.VectorTileRenderer;
 
+/// <summary>A GPU canvas borrowing its supplied context. Dispose on the context-owning thread.</summary>
 public class SkiaGpuCanvas(GRContext context) : SkiaCanvas
 {
     private readonly GRContext grContext = context;
+
+    private bool ownsContext;
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (ownsContext)
+        {
+            grContext?.Dispose();
+            ownsContext = false;
+        }
+    }
 
     public bool IsGpuEnabled { get; private set; } = context != null;
 
@@ -13,7 +26,7 @@ public class SkiaGpuCanvas(GRContext context) : SkiaCanvas
         try
         {
             var context = GRContext.CreateGl();
-            return new SkiaGpuCanvas(context);
+            return new SkiaGpuCanvas(context) { ownsContext = true };
         }
         catch
         {

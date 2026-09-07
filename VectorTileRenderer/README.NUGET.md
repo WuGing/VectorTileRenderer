@@ -33,8 +33,8 @@ var style = new WuGing.VectorTileRenderer.Style("styles/basic-style.json")
 using var source = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource("tiles/zurich.mbtiles");
 style.SetSourceProvider("openmaptiles", source);
 
-var canvas = WuGing.VectorTileRenderer.CanvasFactory.Create(WuGing.VectorTileRenderer.RenderBackend.Cpu);
-var bitmap = await WuGing.VectorTileRenderer.Renderer.Render(style, canvas, 1439, 1227, 13, 512, 512, 1);
+using var canvas = new WuGing.VectorTileRenderer.SkiaCanvas();
+using var bitmap = await WuGing.VectorTileRenderer.Renderer.Render(style, canvas, 1439, 1227, 13, 512, 512, 1);
 ```
 
 Multiple regional databases can be exposed as one source. Requests are routed
@@ -58,3 +58,29 @@ style.SetSourceProvider("openmaptiles", source);
 - `RenderBackend.Auto`: probes GPU availability and falls back to CPU.
 
 For complete examples and demo integrations, see the repository README and demo projects.
+
+## Canvas and bitmap ownership
+
+Dispose each SkiaCanvas when finished and dispose every bitmap returned by Render
+or RenderCached. FinishDrawing transfers bitmap ownership: the completed bitmap
+remains valid after canvas reuse or disposal. A canvas is a single-threaded render
+object. For CanvasFactory.Create, retain the ICanvas reference and dispose it via
+IDisposable when supported. Supplied GRContext instances are borrowed; dispose the
+canvas on its render thread before disposing the context. Contexts created by
+SkiaGpuCanvas.TryCreate are owned by that canvas.
+
+RenderCached finishes encoding and publishes a complete cache file before returning;
+a first cache miss therefore includes encode/write time. Cache hits load caller-owned
+bitmaps. Existing cache files are bypassed when rendering behavior changes.
+
+## Font fallback and shaping
+
+List preferred fonts in the style and set FontDirectory explicitly. Ordinary covered
+Latin text keeps its existing rendering path. Other text uses glyph-coverage checks,
+configured/system fallback and HarfBuzz font/script shaping. Fallback preserves text
+and combines measurement with the same glyph positions used for drawing.
+
+Missing font coverage can still produce a missing-glyph box. Full bidirectional
+paragraph layout across mixed-direction runs and coordinated cross-tile placement
+remain incomplete. Native shaping has been exercised on Windows; other hosts need
+native-dependency and output validation.

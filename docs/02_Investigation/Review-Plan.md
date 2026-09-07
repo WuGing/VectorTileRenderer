@@ -59,3 +59,18 @@ Bright follow-up: [point-label edge cleanup](Label-Edges-2026-09-06.md) validate
 [Bounded road-label placement](Road-Placement-2026-09-06.md) validated locally: 66 tests, close-up CPU/GPU Zurich grids and Colorado timings. Next validate interactively; cross-tile placement and Unicode remain.
 
 [Preview.6 packaging handoff](../Handoffs/2026-09-06-preview6-release.md): updated version/release notes and fixed NuGet release-note encoding in CI. Package metadata verified locally; publication pending.
+
+## 2026-09-07 external fork sanity check
+
+[ststeiger fork evaluation](Ststeiger-Fork-2026-09-07.md): useful font-coverage and
+ownership lessons, no ready-made road/GPU solution. New [F-010](Findings/F-010.md)
+reproduces locale-dependent color parsing; prioritize its small fix before F-002
+ownership and F-003 lossless fallback/shaping. See the
+[handoff](../Handoffs/2026-09-07-ststeiger-review.md).
+
+## 2026-09-07 implementation follow-up
+
+[Fork lessons implemented](Fork-Lessons-Implemented-2026-09-07.md): F-010 closed,
+F-002 mitigated, F-003 improved but still open. 81 tests pass; GPU ownership/failure
+checks pass, original geometry parity failure remains. See the
+[handoff](../Handoffs/2026-09-07-fork-lessons-implemented.md).

@@ -37,7 +37,21 @@ internal static class GpuFailureChecks
                 !lost.IsGpuEnabled && fallback.GetPixel(0, 0) == new SKColor(20, 40, 60));
         }
 
+        using (var borrowed = GRContext.CreateGl() ?? throw new InvalidOperationException("Context creation failed"))
+        {
+            using (var wrapper = new SkiaGpuCanvas(borrowed))
+            {
+                wrapper.StartDrawing(16, 16);
+                using var rendered = wrapper.FinishDrawing();
+            }
+            using var second = new SkiaGpuCanvas(borrowed);
+            second.StartDrawing(16, 16);
+            using var renderedAgain = second.FinishDrawing();
+            Check("Disposing canvas preserves borrowed GPU context", second.IsGpuEnabled && borrowed.Handle != IntPtr.Zero);
+        }
+
         var auto = CanvasFactory.Create(RenderBackend.Auto);
+        using var autoLifetime = auto as IDisposable;
         auto.StartDrawing(64, 64);
         auto.DrawBackground(Background());
         using var image = auto.FinishDrawing();
@@ -48,6 +62,7 @@ internal static class GpuFailureChecks
         {
             if (WindowsGlContext.HasCurrentContext) return false;
             var worker = CanvasFactory.Create(RenderBackend.Auto);
+            using var workerLifetime = worker as IDisposable;
             worker.StartDrawing(64, 64);
             worker.DrawBackground(Background());
             using var output = worker.FinishDrawing();
@@ -57,6 +72,7 @@ internal static class GpuFailureChecks
         Check("Auto on context-free worker renders CPU after hosted success", workerFallback);
 
         var again = CanvasFactory.Create(RenderBackend.Auto);
+        using var againLifetime = again as IDisposable;
         again.StartDrawing(64, 64);
         again.DrawBackground(Background());
         using var next = again.FinishDrawing();

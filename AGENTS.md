@@ -62,6 +62,12 @@ Include a focused regression test with every bug fix. For visual changes, run th
 relevant demo against checked-in sample tiles and attach before/after screenshots
 to the pull request.
 
+For native rendering, dispose SkiaCanvas and each returned bitmap separately;
+FinishDrawing transfers the bitmap to the caller. Supplied GPU contexts remain
+caller-owned and thread-affine. RenderCached completes cache publication before
+returning. Preserve complete label text when selecting fallback fonts; do not use
+glyph count as a coverage test. See VectorTileRenderer/README.NUGET.md for contracts.
+
 ## Commit & Pull Request Guidelines
 
 History favors short, imperative summaries such as `Update package version` or

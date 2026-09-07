@@ -94,6 +94,7 @@ public class RendererTests
     [TestCase(0)]
     [TestCase(2)]
     [TestCase(3)]
+    [TestCase(4)]
     public async Task RenderCached_IgnoresTilesFromBeforeLabelPlacementFix(int renderVersion)
     {
         var style = CreateLineStyle();
@@ -122,6 +123,96 @@ public class RendererTests
         {
             File.Delete(legacyPath);
             Directory.Delete(cachePath);
+        }
+    }
+
+    [Test]
+    public async Task RenderCached_CompletesPublicationBeforeReturningCallerOwnedBitmap()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-ownership-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using (var canvas = new SkiaCanvas())
+            using (var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, 256, 256))
+            {
+                Assert.That(Directory.GetFiles(directory, "*.png"), Has.Length.EqualTo(1));
+            }
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected cache miss") };
+            using var cached = await Renderer.RenderCached(directory, style, shouldNotRender, 1, 2, 8, 256, 256);
+            Assert.That(cached.Width, Is.EqualTo(256));
+            Assert.That(shouldNotRender.FinishCalled, Is.False);
+            Assert.That(Directory.GetFiles(directory, "*.tmp"), Is.Empty);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+                Directory.Delete(directory);
+            }
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Render_KeepsSharedRasterAliveUntilRequestEnds(bool failFinish)
+    {
+        var path = TestAssets.WriteTemporaryStyle("""
+            { "sources": { "tiles": { "type": "raster" } }, "layers": [
+              { "id": "one", "type": "raster", "source": "tiles" },
+              { "id": "two", "type": "raster", "source": "tiles" }
+            ] }
+            """);
+        var style = new Style(path);
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        style.SetSourceProvider("tiles", new RasterSource(stream));
+        var canvas = new RecordingCanvas { FinishFailure = failFinish ? new InvalidOperationException("Finish failed") : null };
+        if (failFinish)
+        {
+            await Assert.ThatAsync(() => Renderer.Render(style, canvas, 1, 2, 8, 256, 256),
+                Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo("Finish failed"));
+        }
+        else
+        {
+            using var image = await Renderer.Render(style, canvas, 1, 2, 8, 256, 256);
+        }
+        Assert.That(canvas.ReadableRasters, Is.EqualTo(new[] { true, true }));
+        Assert.That(stream.CanRead, Is.False, "Renderer must release provider streams on success and failure.");
+    }
+
+    private sealed class RasterSource(Stream stream) : ITileSource
+    {
+        public Task<Stream> GetTile(int x, int y, int z) => Task.FromResult(stream);
+    }
+
+    [Test]
+    public async Task RenderCached_ConcurrentMissesPublishOneCompleteFile()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-concurrent-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
+            {
+                using var canvas = new SkiaCanvas();
+                using var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, 256, 256);
+                Assert.That(image.Width, Is.EqualTo(256));
+            })));
+            var files = Directory.GetFiles(directory);
+            Assert.That(files, Has.Length.EqualTo(1));
+            using var decoded = SKBitmap.Decode(files[0]);
+            Assert.That(decoded.Width, Is.EqualTo(256));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+                Directory.Delete(directory);
+            }
         }
     }
 
@@ -188,7 +279,8 @@ public class RendererTests
         public void DrawPoint(Point geometry, Brush style) { }
         public void DrawText(Point geometry, Brush style) { }
         public void DrawTextOnPath(List<Point> geometry, Brush style) { }
-        public void DrawImage(Stream imageStream, Brush style) { }
+        public List<bool> ReadableRasters { get; } = new();
+        public void DrawImage(Stream imageStream, Brush style) => ReadableRasters.Add(imageStream.CanRead);
         public void DrawUnknown(List<List<Point>> geometry, Brush style) { }
 
         public SKBitmap FinishDrawing()

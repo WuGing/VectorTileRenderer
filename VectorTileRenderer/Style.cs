@@ -687,9 +687,9 @@ public class Style
         if (colorString.StartsWith("hsl("))
         {
             var segments = colorString.Replace('%', '\0').Split(',', '(', ')');
-            double h = double.Parse(segments[1]);
-            double s = double.Parse(segments[2]);
-            double l = double.Parse(segments[3]);
+            double h = double.Parse(segments[1], System.Globalization.CultureInfo.InvariantCulture);
+            double s = double.Parse(segments[2], System.Globalization.CultureInfo.InvariantCulture);
+            double l = double.Parse(segments[3], System.Globalization.CultureInfo.InvariantCulture);
 
             return HslToColor(h, s, l);
         }
@@ -697,10 +697,10 @@ public class Style
         if (colorString.StartsWith("hsla("))
         {
             var segments = colorString.Replace('%', '\0').Split(',', '(', ')');
-            double h = double.Parse(segments[1]);
-            double s = double.Parse(segments[2]);
-            double l = double.Parse(segments[3]);
-            double a = double.Parse(segments[4]) * 255;
+            double h = double.Parse(segments[1], System.Globalization.CultureInfo.InvariantCulture);
+            double s = double.Parse(segments[2], System.Globalization.CultureInfo.InvariantCulture);
+            double l = double.Parse(segments[3], System.Globalization.CultureInfo.InvariantCulture);
+            double a = double.Parse(segments[4], System.Globalization.CultureInfo.InvariantCulture) * 255;
 
             var color = HslToColor(h, s, l);
             return Color.FromArgb((byte)a, color.R, color.G, color.B);
@@ -709,10 +709,10 @@ public class Style
         if (colorString.StartsWith("rgba("))
         {
             var segments = colorString.Replace('%', '\0').Split(',', '(', ')');
-            double r = double.Parse(segments[1]);
-            double g = double.Parse(segments[2]);
-            double b = double.Parse(segments[3]);
-            double a = double.Parse(segments[4]) * 255;
+            double r = double.Parse(segments[1], System.Globalization.CultureInfo.InvariantCulture);
+            double g = double.Parse(segments[2], System.Globalization.CultureInfo.InvariantCulture);
+            double b = double.Parse(segments[3], System.Globalization.CultureInfo.InvariantCulture);
+            double a = double.Parse(segments[4], System.Globalization.CultureInfo.InvariantCulture) * 255;
 
             return Color.FromArgb((byte)a, (byte)r, (byte)g, (byte)b);
         }
@@ -720,9 +720,9 @@ public class Style
         if (colorString.StartsWith("rgb("))
         {
             var segments = colorString.Replace('%', '\0').Split(',', '(', ')');
-            double r = double.Parse(segments[1]);
-            double g = double.Parse(segments[2]);
-            double b = double.Parse(segments[3]);
+            double r = double.Parse(segments[1], System.Globalization.CultureInfo.InvariantCulture);
+            double g = double.Parse(segments[2], System.Globalization.CultureInfo.InvariantCulture);
+            double b = double.Parse(segments[3], System.Globalization.CultureInfo.InvariantCulture);
 
             return Color.FromRgb((byte)r, (byte)g, (byte)b);
         }

@@ -72,7 +72,7 @@ namespace Gmap.Demo.WinForms
         {
             var newY = (int)Math.Pow(2, zoom) - pos.Y - 1;
 
-            var canvas = new SkiaCanvas();
+            using var canvas = new SkiaCanvas();
             SKBitmap bitmap;
 
             try
@@ -93,7 +93,7 @@ namespace Gmap.Demo.WinForms
                 }
             }
 
-            return GetTileImageFromArray(GetBytesFromBitmap(bitmap));
+            using (bitmap) return GetTileImageFromArray(GetBytesFromBitmap(bitmap));
         }
 
         static byte[] GetBytesFromBitmap(SKBitmap bmp)

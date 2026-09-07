@@ -1,6 +1,6 @@
 # Proposed work
 
-R-001's isolated validation experiment and readback/Auto fixes were authorized and implemented locally; host/thread integration and parity remain. Other items remain proposals except the validated street-label follow-up under R-003. None has been remotely published as an issue.
+R-001's isolated validation experiment and readback/Auto fixes were authorized and implemented locally; host/thread integration and parity remain. R-002 lifetime contracts and R-003 fallback/shaping now have validated implementations; R-004 includes the fixed culture bug. Remaining subitems stay open. None has been remotely published as an issue.
 
 ## R-001: Validate and define GPU hosting
 
@@ -31,7 +31,7 @@ Validation:
 
 ## R-002: Define canvas and cache-writer lifetime
 
-Status: Proposed
+Status: Implemented
 Priority: High
 Area: Resource Ownership
 Related findings: F-002
@@ -161,3 +161,5 @@ Risks:
 Validation:
 - Same geometry/styles/fonts/output sizes, visual parity, startup and steady-state timings; build/pack target checks and native runtime deployment.
 
+
+2026-09-07: [ownership, fallback/shaping and invariant parsing validation](../02_Investigation/Fork-Lessons-Implemented-2026-09-07.md). R-002 uses completed atomic publication rather than a background writer; full mixed-direction layout under R-003 remains open.

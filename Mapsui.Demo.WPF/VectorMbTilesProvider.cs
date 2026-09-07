@@ -174,6 +174,7 @@ namespace Mapsui.Demo.WPF
         public async Task<byte[]> GetTileAsync(TileInfo tileInfo)
         {
             var canvas = CanvasFactory.Create(SelectedBackend);
+            using var canvasLifetime = canvas as IDisposable;
             var backendName = GetBackendName(canvas);
             SKBitmap bitmap;
             var x = (int)tileInfo.Index.Col;
@@ -212,7 +213,7 @@ namespace Mapsui.Demo.WPF
                 TriggerNeighborPrefetch(x, y, z);
             }
 
-            return GetBytesFromBitmap(bitmap);
+            using (bitmap) return GetBytesFromBitmap(bitmap);
         }
 
         private void TriggerNeighborPrefetch(int x, int y, int z)
@@ -251,12 +252,13 @@ namespace Mapsui.Demo.WPF
                 try
                 {
                     var prefetchCanvas = CanvasFactory.Create(SelectedBackend);
+                    using var canvasLifetime = prefetchCanvas as IDisposable;
                     var backendName = GetBackendName(prefetchCanvas);
                     var previousBackendHint = Renderer.CurrentBackendHint;
                     Renderer.CurrentBackendHint = backendName;
                     try
                     {
-                        await Renderer.RenderCached(cachePath, style, prefetchCanvas, x, y, z, 256, 256, 1);
+                        using var prefetched = await Renderer.RenderCached(cachePath, style, prefetchCanvas, x, y, z, 256, 256, 1);
                     }
                     finally
                     {

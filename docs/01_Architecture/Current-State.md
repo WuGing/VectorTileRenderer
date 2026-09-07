@@ -19,3 +19,12 @@ The backend boundary is partially abstracted: drawing operations use ICanvas, bu
 
 Evidence: `VectorTileRenderer/Renderer.cs`, `ICanvas.cs`, `CanvasFactory.cs`, `SkiaCanvas.cs`, `SkiaGpuCanvas.cs`, `Sources/`, and `VectorTileRenderer.csproj`.
 
+
+## 2026-09-07 lifetime and text changes
+
+SkiaCanvas is disposable; FinishDrawing transfers caller-owned bitmap output and
+releases its surface. Constructor-supplied GPU contexts are borrowed. RenderCached
+completes PNG encoding and atomic publication before return. Provider raster streams
+are request-owned across shared layers. TextLayout uses actual glyph coverage and
+HarfBuzz font/script runs for complex/fallback labels, preserving ordinary covered
+Latin rendering. See [contracts and limits](../02_Investigation/Fork-Lessons-Implemented-2026-09-07.md).

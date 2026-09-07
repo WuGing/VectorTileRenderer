@@ -172,8 +172,8 @@ namespace Demo.WPF
             style.SetSourceProvider("satellite", rasterProvider);
 
             // render it on a skia canvas
-            var canvas = new SkiaCanvas();
-            var bitmapR = await Renderer.Render(style, canvas, 0, 0, 14, 256, 256, 1);
+            using var canvas = new SkiaCanvas();
+            using var bitmapR = await Renderer.Render(style, canvas, 0, 0, 14, 256, 256, 1);
             demoImage.Source = ToBitmapSource(bitmapR);
 
             scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(14)));
@@ -196,8 +196,8 @@ namespace Demo.WPF
             style.SetSourceProvider(0, provider);
 
             // render it on a skia canvas
-            var canvas = new SkiaCanvas();
-            var bitmapR = await Renderer.Render(style, canvas, 0, 0, zoom, size, size, scale);
+            using var canvas = new SkiaCanvas();
+            using var bitmapR = await Renderer.Render(style, canvas, 0, 0, zoom, size, size, scale);
             demoImage.Source = ToBitmapSource(bitmapR);
 
             scrollViewer.Background = new SolidColorBrush(ToMediaColor(style.GetBackgroundColor(zoom)));
@@ -247,7 +247,7 @@ namespace Demo.WPF
                 async (coordinate, cancellationToken) =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var canvas = new SkiaCanvas();
+                    using var canvas = new SkiaCanvas();
                     using SKBitmap? bitmapR = await Renderer.Render(
                         style,
                         canvas,
