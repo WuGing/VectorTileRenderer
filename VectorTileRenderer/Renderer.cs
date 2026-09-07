@@ -72,6 +72,8 @@ public class Renderer
 
         var bundle = new
         {
+            // Invalidate PNGs generated with the old, warped/partial labels.
+            RenderVersion = 4,
             style.Hash,
             sizeX,
             sizeY,

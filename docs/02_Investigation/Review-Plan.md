@@ -46,3 +46,14 @@ open for the broader text-placement issues. See the [latest handoff](../Handoffs
 4. R-005/R-006: measure and improve cache policy and end-to-end instrumentation.
 5. Only then choose a backend spike using R-007 and Q-002.
 
+
+## 2026-09-06 priority update
+
+[Production road-label corruption fixed locally](Road-Label-Corruption-2026-09-06.md):
+53 tests pass, fresh CPU/GPU Zurich grids validated. See the
+[handoff](../Handoffs/2026-09-06-road-labels.md) for rollout and remaining text work.
+The alternative-backend experiment is paused.
+
+Bright follow-up: [point-label edge cleanup](Label-Edges-2026-09-06.md) validated with 63 tests and 108 fresh tiles. Whole labels are omitted when they cannot fit; coordinated cross-tile placement remains future work.
+
+[Bounded road-label placement](Road-Placement-2026-09-06.md) validated locally: 66 tests, close-up CPU/GPU Zurich grids and Colorado timings. Next validate interactively; cross-tile placement and Unicode remain.
