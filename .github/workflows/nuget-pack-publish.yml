@@ -62,50 +62,36 @@ jobs:
           "package_version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "package_id=$packageId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Generate release notes
-        shell: bash
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            LAST_TAG=$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)
-          else
-            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          fi
-          {
-            echo "## Changes"
-            echo
-            if [ -n "$LAST_TAG" ]; then
-              echo "Comparing against $LAST_TAG"
-              echo
-              git log "$LAST_TAG..HEAD" --pretty=format:"- %s (%h)" -n 100
-            else
-              echo "Initial release notes generated from recent commits"
-              echo
-              git log --pretty=format:"- %s (%h)" -n 100
-            fi
-          } > release-notes.md
-
-      - name: Pack
+      - name: Export curated release notes
         shell: pwsh
         run: |
-          $releaseNotes = Get-Content "release-notes.md" -Raw
-          # NuGet metadata expects a single MSBuild property value; encode line breaks.
-          $releaseNotes = $releaseNotes -replace "`r?`n", "&#10;"
-          # MSBuild uses ';' as a property separator in -p arguments, so escape it.
-          $releaseNotes = $releaseNotes -replace ";", "%3B"
+          [xml]$project = Get-Content "VectorTileRenderer/VectorTileRenderer.csproj" -Raw
+          $notes = [string]($project.Project.PropertyGroup | Where-Object { $_.PackageReleaseNotes } | Select-Object -First 1).PackageReleaseNotes
+          if ([string]::IsNullOrWhiteSpace($notes)) { throw "PackageReleaseNotes is required." }
+          Set-Content "release-notes.md" -Value $notes -Encoding utf8
 
-          $packArgs = @(
-            "pack"
-            "VectorTileRenderer/VectorTileRenderer.csproj"
-            "-c"
-            "Release"
-            "--no-build"
-            "-o"
-            "artifacts"
-            "-p:PackageVersion=${{ steps.meta.outputs.package_version }}"
-            "-p:PackageReleaseNotes=$releaseNotes"
-          )
+      - name: Pack and verify release metadata
+        shell: pwsh
+        run: |
+          dotnet pack VectorTileRenderer/VectorTileRenderer.csproj -c Release --no-build -o artifacts
+          if ($LASTEXITCODE -ne 0) { throw "Package creation failed." }
 
-          dotnet @packArgs
+          [xml]$project = Get-Content "VectorTileRenderer/VectorTileRenderer.csproj" -Raw
+          $properties = $project.Project.PropertyGroup | Where-Object { $_.PackageId } | Select-Object -First 1
+          $packagePath = "artifacts/$($properties.PackageId).$($properties.Version).nupkg"
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $packagePath))
+          try {
+            $entry = $archive.Entries | Where-Object { $_.FullName.EndsWith(".nuspec") } | Select-Object -First 1
+            $reader = [System.IO.StreamReader]::new($entry.Open())
+            try { [xml]$manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($manifest.package.metadata.version -ne $properties.Version) { throw "Packed version mismatch." }
+            if ($manifest.package.metadata.releaseNotes -cne $properties.PackageReleaseNotes) { throw "Packed release notes differ from the project." }
+            $readme = $archive.GetEntry([string]$manifest.package.metadata.readme)
+            if ($null -eq $readme) { throw "Package README is missing." }
+            $reader = [System.IO.StreamReader]::new($readme.Open())
+            try { $readmeText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if (!$readmeText.Contains([string]$properties.Version)) { throw "Update the package README release notes for this version." }
+          } finally { $archive.Dispose() }
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4

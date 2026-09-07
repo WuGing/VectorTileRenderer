@@ -2,6 +2,19 @@
 
 Vector map tile rendering library for .NET.
 
+## Release notes - 0.1.1-preview.6
+
+- Fixed upside-down, warped and truncated road labels; use intact glyphs and measured text width.
+- Prefer gently bending road sections and reject unreadable placements while preserving tile-edge protections.
+- Fixed area/building label cutoffs using measured multiline bounds, alignment, offsets and halos.
+- Invalidate older rendered-tile cache entries so corrected labels appear after upgrading.
+- Fixed sticky Auto CPU fallback and propagate GPU pixel-readback failures.
+- Added label regressions and CPU/GPU visual and performance validation tooling.
+- GPU support remains experimental; cross-tile label placement and Unicode shaping/fallback remain incomplete.
+
+Rebuild and restart applications after upgrading. Labels that cannot fit fully within
+a tile are omitted; coordinated placement across tiles remains future work.
+
 ## Highlights
 
 - Renders OpenMapTiles/Mapbox-style vector tile data.
