@@ -1,302 +1,136 @@
-﻿using BruTile;
+using BruTile;
 using SkiaSharp;
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using WuGing.VectorTileRenderer;
 
 namespace Mapsui.Demo.WPF
 {
-    class VectorMbTilesProvider
+    class VectorMbTilesProvider : IDisposable
     {
-        Style style;
-        WuGing.VectorTileRenderer.Sources.SingleMbTilesSource provider;
-        string cachePath;
-
-        private static readonly object profileLock = new object();
-        private static bool profileHooked;
-        private static int profileSampleCount;
-        private static double totalBuildMs;
-        private static double totalFetchDecodeMs;
-        private static double totalStyleEvalMs;
-        private static double totalGeometryMs;
-        private static double totalTextMs;
-        private static double totalRenderMs;
-        private static int totalFeatureCandidates;
-        private static int totalFeatureAccepted;
-        private static int totalUniqueFeatures;
-        private static int totalStylePasses;
-        private static int totalGpuRenderedTiles;
-        private static int totalCpuRenderedTiles;
-        private static int totalUnknownRenderedTiles;
-        private static readonly ConcurrentDictionary<(int X, int Y, int Z), byte> prefetchedTiles = new ConcurrentDictionary<(int X, int Y, int Z), byte>();
-        private static readonly SemaphoreSlim prefetchLimiter = new SemaphoreSlim(2);
-
-        private const int ProfileLogEveryNSamples = 40;
-        private static readonly bool EnableNeighborPrefetch = false;
-        private const RenderBackend SelectedBackend = RenderBackend.Auto;
-        private const int PrefetchRadius = 1;
-        private const int MaxPrefetchedTileKeys = 50000;
-
+        private readonly Style style;
+        private readonly string cachePath;
+        private readonly string sourceRevision;
+        private readonly WuGing.VectorTileRenderer.Sources.SingleMbTilesSource provider;
+        private readonly object lifetimeLock = new();
+        private int activeRequests;
+        private bool retired;
+        private bool released;
+        private static readonly object profileLock = new();
+        private static readonly Queue<double> requestTimes = new();
+        private static int hits;
+        private static int misses;
+        private static string lastRender = "No fresh renders yet";
         public static event Action<string> ProfileSummaryUpdated;
 
-        public VectorMbTilesProvider(string path, string stylePath, string cachePath)
+        public VectorMbTilesProvider(string path, string stylePath, string cachePath, int revision = 0)
         {
             this.cachePath = cachePath;
-
-            HookRendererProfiling();
-
+            var file = new FileInfo(path);
+            // Demo policy: metadata plus a persistent manual revision, not a content digest.
+            sourceRevision = $"{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{revision}";
             style = new Style(stylePath)
             {
-                FontDirectory = @"styles/fonts/"
+                FontDirectory = Path.Combine(AppContext.BaseDirectory, "styles", "fonts")
             };
-
             provider = new WuGing.VectorTileRenderer.Sources.SingleMbTilesSource(path);
             style.SetSourceProvider("openmaptiles", provider);
         }
 
-        private static void HookRendererProfiling()
+        public static void StartProfiling()
         {
-            lock (profileLock)
-            {
-                if (profileHooked)
-                {
-                    return;
-                }
+            Renderer.ProfileSink = OnRenderProfile;
+            Renderer.CacheProfileSink = OnCacheProfile;
+        }
 
-                Renderer.ProfileSink = OnRenderProfile;
-                profileHooked = true;
-            }
+        public static void StopProfiling()
+        {
+            Renderer.ProfileSink = null;
+            Renderer.CacheProfileSink = null;
         }
 
         private static void OnRenderProfile(Renderer.RenderProfile profile)
         {
             lock (profileLock)
             {
-                profileSampleCount++;
-                totalBuildMs += profile.BuildVisualLayersMs;
-                totalFetchDecodeMs += profile.TileFetchDecodeMs;
-                totalStyleEvalMs += profile.BuildStyleEvalMs;
-                totalGeometryMs += profile.DrawGeometryMs;
-                totalTextMs += profile.DrawTextMs;
-                totalRenderMs += profile.TotalMs;
-                totalFeatureCandidates += profile.FeatureCandidateCount;
-                totalFeatureAccepted += profile.FeatureAcceptedCount;
-                totalUniqueFeatures += profile.UniqueFeatureCount;
-                totalStylePasses += profile.StyleEvaluationPassCount;
-
-                if (string.Equals(profile.Backend, "GPU", StringComparison.OrdinalIgnoreCase))
-                {
-                    totalGpuRenderedTiles++;
-                }
-                else if (string.Equals(profile.Backend, "CPU", StringComparison.OrdinalIgnoreCase))
-                {
-                    totalCpuRenderedTiles++;
-                }
-                else
-                {
-                    totalUnknownRenderedTiles++;
-                }
-
-                if (profileSampleCount < ProfileLogEveryNSamples)
-                {
-                    return;
-                }
-
-                var avgBuild = totalBuildMs / profileSampleCount;
-                var avgFetchDecode = totalFetchDecodeMs / profileSampleCount;
-                var avgStyleEval = totalStyleEvalMs / profileSampleCount;
-                var avgGeometry = totalGeometryMs / profileSampleCount;
-                var avgText = totalTextMs / profileSampleCount;
-                var avgTotal = totalRenderMs / profileSampleCount;
-                var avgFeatureAccepted = totalFeatureAccepted / (double)profileSampleCount;
-                var avgUniqueFeatures = totalUniqueFeatures / (double)profileSampleCount;
-                var avgStylePasses = totalStylePasses / (double)profileSampleCount;
-
-                Trace.WriteLine(
-                    string.Format(
-                        "[VectorTileRenderer][Mapsui] avg over {0} tiles => total: {1:0.00} ms, build: {2:0.00} ms (fetch: {3:0.00}, style: {4:0.00}), geometry: {5:0.00} ms, text: {6:0.00} ms, feat acc/pass/uniq: {7:0.0}/{8:0.0}/{9:0.0}, backend gpu/cpu/u: {10}/{11}/{12}",
-                        profileSampleCount,
-                        avgTotal,
-                        avgBuild,
-                        avgFetchDecode,
-                        avgStyleEval,
-                        avgGeometry,
-                        avgText,
-                        avgFeatureAccepted,
-                        avgStylePasses,
-                        avgUniqueFeatures,
-                        totalGpuRenderedTiles,
-                        totalCpuRenderedTiles,
-                        totalUnknownRenderedTiles));
-
-                var summary = string.Format(
-                    "Tiles avg ({0}): total {1:0.00} ms | build {2:0.00} (fetch {3:0.00}, style {4:0.00}) | geom {5:0.00} | text {6:0.00} | feat acc/pass/uniq {7:0}/{8:0}/{9:0} | backend G/C/U {10}/{11}/{12}",
-                    profileSampleCount,
-                    avgTotal,
-                    avgBuild,
-                    avgFetchDecode,
-                    avgStyleEval,
-                    avgGeometry,
-                    avgText,
-                    avgFeatureAccepted,
-                    avgStylePasses,
-                    avgUniqueFeatures,
-                    totalGpuRenderedTiles,
-                    totalCpuRenderedTiles,
-                    totalUnknownRenderedTiles);
-
-                var summaryUpdated = ProfileSummaryUpdated;
-                if (summaryUpdated != null)
-                {
-                    summaryUpdated(summary);
-                }
-
-                profileSampleCount = 0;
-                totalBuildMs = 0;
-                totalFetchDecodeMs = 0;
-                totalStyleEvalMs = 0;
-                totalGeometryMs = 0;
-                totalTextMs = 0;
-                totalRenderMs = 0;
-                totalFeatureCandidates = 0;
-                totalFeatureAccepted = 0;
-                totalUniqueFeatures = 0;
-                totalStylePasses = 0;
-                totalGpuRenderedTiles = 0;
-                totalCpuRenderedTiles = 0;
-                totalUnknownRenderedTiles = 0;
+                lastRender = $"Last render: {profile.ActualBackend}, geometry {profile.DrawGeometryMs:0.0} ms, text {profile.DrawTextOnlyMs:0.0}, finish {profile.FinishDrawingMs:0.0}";
             }
+        }
+
+        private static void OnCacheProfile(CacheRequestProfile profile)
+        {
+            string summary;
+            lock (profileLock)
+            {
+                if (profile.CacheHit) hits++;
+                else misses++;
+                requestTimes.Enqueue(profile.TotalMs);
+                if (requestTimes.Count > 200) requestTimes.Dequeue();
+                var sorted = requestTimes.OrderBy(value => value).ToArray();
+                var median = sorted[(sorted.Length - 1) / 2];
+                var p95 = sorted[(int)Math.Ceiling(sorted.Length * 0.95) - 1];
+                summary = $"Session disk hits/misses: {hits}/{misses} | last {requestTimes.Count} requests median/p95: {median:0.0}/{p95:0.0} ms\n" +
+                    $"Last request: {profile.ActualBackend}, total {profile.TotalMs:0.0} ms | lookup {profile.LookupMs:0.0}, render {profile.RenderMs:0.0}, encode/write {profile.EncodeAndPublishMs:0.0}\n" +
+                    lastRender;
+            }
+            Trace.WriteLine(summary);
+            ProfileSummaryUpdated?.Invoke(summary);
         }
 
         public async Task<byte[]> GetTileAsync(TileInfo tileInfo)
         {
-            var canvas = CanvasFactory.Create(SelectedBackend);
-            using var canvasLifetime = canvas as IDisposable;
-            var backendName = GetBackendName(canvas);
-            SKBitmap bitmap;
-            var x = (int)tileInfo.Index.Col;
-            var y = (int)tileInfo.Index.Row;
-            var z = Convert.ToInt32(tileInfo.Index.Level);
-
+            lock (lifetimeLock)
+            {
+                if (retired) return null;
+                activeRequests++;
+            }
             try
             {
-                var previousBackendHint = Renderer.CurrentBackendHint;
-                Renderer.CurrentBackendHint = backendName;
-                try
-                {
-                    bitmap = await Renderer.RenderCached(
-                        cachePath,
-                        style,
-                        canvas,
-                        x,
-                        y,
-                        z,
-                        256,
-                        256,
-                        1);
-                }
-                finally
-                {
-                    Renderer.CurrentBackendHint = previousBackendHint;
-                }
-            }
-            catch
-            {
-                return null;
-            }
-
-            if (EnableNeighborPrefetch)
-            {
-                TriggerNeighborPrefetch(x, y, z);
-            }
-
-            using (bitmap) return GetBytesFromBitmap(bitmap);
-        }
-
-        private void TriggerNeighborPrefetch(int x, int y, int z)
-        {
-            for (int dy = -PrefetchRadius; dy <= PrefetchRadius; dy++)
-            {
-                for (int dx = -PrefetchRadius; dx <= PrefetchRadius; dx++)
-                {
-                    if (dx == 0 && dy == 0)
-                    {
-                        continue;
-                    }
-
-                    QueuePrefetchTile(x + dx, y + dy, z);
-                }
-            }
-        }
-
-        private void QueuePrefetchTile(int x, int y, int z)
-        {
-            var key = (x, y, z);
-            if (!prefetchedTiles.TryAdd(key, 0))
-            {
-                return;
-            }
-
-            if (prefetchedTiles.Count > MaxPrefetchedTileKeys)
-            {
-                prefetchedTiles.Clear();
-                prefetchedTiles.TryAdd(key, 0);
-            }
-
-            _ = Task.Run(async () =>
-            {
-                await prefetchLimiter.WaitAsync();
-                try
-                {
-                    var prefetchCanvas = CanvasFactory.Create(SelectedBackend);
-                    using var canvasLifetime = prefetchCanvas as IDisposable;
-                    var backendName = GetBackendName(prefetchCanvas);
-                    var previousBackendHint = Renderer.CurrentBackendHint;
-                    Renderer.CurrentBackendHint = backendName;
-                    try
-                    {
-                        using var prefetched = await Renderer.RenderCached(cachePath, style, prefetchCanvas, x, y, z, 256, 256, 1);
-                    }
-                    finally
-                    {
-                        Renderer.CurrentBackendHint = previousBackendHint;
-                    }
-                }
-                catch
-                {
-                    // Best effort prefetch only.
-                }
-                finally
-                {
-                    prefetchLimiter.Release();
-                }
-            });
-        }
-
-        private static string GetBackendName(ICanvas canvas)
-        {
-            if (canvas is SkiaGpuCanvas gpuCanvas && gpuCanvas.IsGpuEnabled)
-            {
-                return "GPU";
-            }
-
-            return "CPU";
-        }
-
-        static byte[] GetBytesFromBitmap(SKBitmap bmp)
-        {
-            if (bmp == null)
-            {
-                return null;
-            }
-
-            using (var image = SKImage.FromBitmap(bmp))
-            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
-            {
+                var canvas = CanvasFactory.Create(RenderBackend.Auto);
+                using var lifetime = canvas as IDisposable;
+                using var bitmap = await Renderer.RenderCached(cachePath, style, canvas,
+                    (int)tileInfo.Index.Col, (int)tileInfo.Index.Row, Convert.ToInt32(tileInfo.Index.Level),
+                    sourceRevision, 256, 256, 1);
+                if (bitmap == null) return null;
+                using var image = SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
                 return data.ToArray();
+            }
+            catch (Exception exception)
+            {
+                Trace.WriteLine($"Tile request failed: {exception}");
+                ProfileSummaryUpdated?.Invoke($"Tile request failed: {exception.Message}");
+                return null;
+            }
+            finally
+            {
+                lock (lifetimeLock)
+                {
+                    activeRequests--;
+                    ReleaseRetiredProvider();
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (lifetimeLock)
+            {
+                retired = true;
+                ReleaseRetiredProvider();
+            }
+        }
+
+        private void ReleaseRetiredProvider()
+        {
+            if (retired && activeRequests == 0 && !released)
+            {
+                released = true;
+                provider.Dispose();
             }
         }
     }

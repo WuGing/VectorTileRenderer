@@ -6,12 +6,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Mapsui.Demo.WPF"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" WindowStartupLocation="CenterScreen" WindowState="Maximized">
+        Title="VectorTileRenderer — manual validation" Height="650" Width="1100" WindowStartupLocation="CenterScreen" WindowState="Maximized">
     <Grid>
 
         <xaml:MapControl Name="MyMapControl"></xaml:MapControl>
 
-        <Grid VerticalAlignment="Top" Height="40" Background="sc#0.3,1,1,1">
+        <Grid VerticalAlignment="Top" Height="80" Background="#EEFFFFFF">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="12,8,260,0">
+                <Button Content="Reload map" Click="Reload_Click" Padding="10,4" Margin="0,0,8,0" />
+                <Button Content="New revision" Click="Revision_Click" Padding="10,4" Margin="0,0,8,0" />
+                <Button Name="trimButton" Content="Trim cache (512 MiB / 30 days)" Click="Trim_Click" Padding="10,4" Margin="0,0,8,0" />
+                <Button Name="clearButton" Content="Clear rendered cache" Click="Clear_Click" Padding="10,4" />
+            </StackPanel>
+            <TextBlock Name="cacheStatusText" Margin="12,48,12,0" Text="Starting validation cache..." TextTrimming="CharacterEllipsis" />
             <ComboBox VerticalAlignment="Top" HorizontalAlignment="Right" Width="206" Margin="40,10,40,0" SelectedIndex="0" Name="styleBox" SelectionChanged="ComboBox_SelectionChanged">
                 <ComboBoxItem Tag="basic">Basic</ComboBoxItem>
                 <ComboBoxItem Tag="aliflux">AliFlux</ComboBoxItem>
@@ -24,7 +31,7 @@
         </Grid>
 
         <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Background="#AA111111" CornerRadius="6" Padding="10,6" IsHitTestVisible="False">
-            <TextBlock Name="perfOverlayText" Foreground="#FFF5F5F5" FontSize="12" Text="Profiler: waiting for tile samples..." />
+            <TextBlock Name="perfOverlayText" Foreground="#FFF5F5F5" FontSize="12" Text="Profiler: waiting for tile requests..." />
         </Border>
 
     </Grid>

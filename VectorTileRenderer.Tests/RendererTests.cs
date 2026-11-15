@@ -12,6 +12,7 @@ public class RendererTests
     public void TearDown()
     {
         Renderer.ProfileSink = null;
+        Renderer.CacheProfileSink = null;
         Renderer.CurrentBackendHint = null;
     }
 
@@ -65,6 +66,8 @@ public class RendererTests
         Renderer.RenderProfile profile = null;
         Renderer.ProfileSink = value => profile = value;
         var cachePath = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"failed-render-{Guid.NewGuid():N}");
+        CacheRequestProfile cacheProfile = null;
+        Renderer.CacheProfileSink = value => cacheProfile = value;
 
         try
         {
@@ -76,6 +79,7 @@ public class RendererTests
             }, Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo(failure.Message));
             Assert.That(canvas.FinishCalled, Is.True);
             Assert.That(profile, Is.Null);
+            Assert.That(cacheProfile, Is.Null);
             if (cached)
             {
                 Assert.That(Directory.GetFiles(cachePath), Is.Empty);
@@ -187,8 +191,9 @@ public class RendererTests
         public Task<Stream> GetTile(int x, int y, int z) => Task.FromResult(stream);
     }
 
-    [Test]
-    public async Task RenderCached_ConcurrentMissesPublishOneCompleteFile()
+    [TestCase(null)]
+    [TestCase("dataset:v1")]
+    public async Task RenderCached_ConcurrentMissesPublishOneCompleteFile(string sourceRevision)
     {
         var style = CreateLineStyle();
         style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
@@ -198,7 +203,7 @@ public class RendererTests
             await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
             {
                 using var canvas = new SkiaCanvas();
-                using var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, 256, 256);
+                using var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, sourceRevision, 256, 256);
                 Assert.That(image.Width, Is.EqualTo(256));
             })));
             var files = Directory.GetFiles(directory);
@@ -213,6 +218,251 @@ public class RendererTests
                 foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
                 Directory.Delete(directory);
             }
+        }
+    }
+
+    [TestCase(false, 1, null)]
+    [TestCase(true, 1, null)]
+    [TestCase(false, 8, null)]
+    [TestCase(false, 1, "dataset:v1")]
+    [TestCase(true, 1, "dataset:v1")]
+    [TestCase(false, 8, "dataset:v1")]
+    public async Task RenderCached_ReplacesCorruptEntryAndReusesRepairedTile(bool empty, int requests, string sourceRevision)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-corrupt-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using (var canvas = new SkiaCanvas())
+            using (var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, sourceRevision, 256, 256))
+            {
+                Assert.That(image, Is.Not.Null);
+            }
+            var path = Directory.GetFiles(directory, "*.png").Single();
+            File.WriteAllBytes(path, empty ? Array.Empty<byte>() : new byte[] { 1, 2, 3, 4 });
+            await Task.WhenAll(Enumerable.Range(0, requests).Select(_ => Task.Run(async () =>
+            {
+                using var canvas = new SkiaCanvas();
+                using var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, sourceRevision, 256, 256);
+                Assert.That(image, Is.Not.Null);
+                Assert.That(image.Width, Is.EqualTo(256));
+            })));
+            using var repaired = SKBitmap.Decode(path);
+            Assert.That(repaired, Is.Not.Null);
+            Assert.That(repaired.Width, Is.EqualTo(256));
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected cache miss") };
+            using var cached = await Renderer.RenderCached(directory, style, shouldNotRender, 1, 2, 8, sourceRevision, 256, 256);
+            Assert.That(cached.Pixels, Is.EqualTo(repaired.Pixels));
+            Assert.That(shouldNotRender.FinishCalled, Is.False);
+            Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(1));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+                Directory.Delete(directory);
+            }
+        }
+    }
+
+    [TestCase("dataset-a:v1", "dataset-b:v1")]
+    [TestCase("dataset-a:v1", "dataset-a:v2")]
+    [TestCase(null, "")]
+    public async Task RenderCached_IsolatesSourceRevisionsAndReusesMatchingRevision(string firstRevision, string secondRevision)
+    {
+        var style = CreateLineStyle();
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-revision-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+            using var firstCanvas = new SkiaCanvas();
+            using var first = await Renderer.RenderCached(directory, style, firstCanvas, 1, 2, 8, firstRevision, 256, 256);
+
+            var changedTile = CreateLineTile();
+            changedTile.Layers[0].Features[0].Geometry = [[new Point(0, 0.5), new Point(1, 0.5)]];
+            style.SetSourceProvider("tiles", new StubVectorTileSource(changedTile));
+            using var secondCanvas = new SkiaCanvas();
+            using var second = await Renderer.RenderCached(directory, style, secondCanvas, 1, 2, 8, secondRevision, 256, 256);
+            Assert.That(second.Pixels.SequenceEqual(first.Pixels), Is.False, "Changed source data must not reuse the first provider's PNG.");
+            Assert.That(Directory.GetFiles(directory, "*.png"), Has.Length.EqualTo(2));
+
+            // A new Style/provider instance must still hit the persistent revision key.
+            var freshStyle = CreateLineStyle();
+            Assert.That(freshStyle.Hash, Is.EqualTo(style.Hash));
+            freshStyle.SetSourceProvider("tiles", new StubVectorTileSource(null));
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected cache miss") };
+            using var cached = await Renderer.RenderCached(directory, freshStyle, shouldNotRender, 1, 2, 8, secondRevision, 256, 256);
+            Assert.That(cached, Is.Not.Null);
+            Assert.That(cached.Pixels.SequenceEqual(second.Pixels), Is.True);
+            Assert.That(shouldNotRender.FinishCalled, Is.False);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+                Directory.Delete(directory);
+            }
+        }
+    }
+
+    [Test]
+    public async Task RenderCached_PreservesExistingUnversionedCacheKeyAndSignature()
+    {
+        var style = CreateLineStyle();
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-compatible-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var bundle = new { RenderVersion = 5, style.Hash, sizeX = 256d, sizeY = 256d, scale = 1d, layerString = "" };
+        var key = Utils.Sha256(System.Text.Json.JsonSerializer.Serialize(bundle)).Substring(0, 12);
+        var path = Path.Combine(directory, "1x2-8-" + key + ".png");
+        try
+        {
+            using (var image = new SKBitmap(256, 256))
+            {
+                image.Erase(SKColors.Red);
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                File.WriteAllBytes(path, data.ToArray());
+            }
+            // Binding this exact delegate also checks that the original public signature remains.
+            Func<string, Style, ICanvas, int, int, double, double, double, double, List<string>, Task<SKBitmap>> legacy = Renderer.RenderCached;
+            var canvas = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected cache miss") };
+            using var oldCall = await legacy(directory, style, canvas, 1, 2, 8, 256, 256, 1, null);
+            using var nullRevision = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, sourceRevision: null, sizeX: 256, sizeY: 256);
+            Assert.That(oldCall.GetPixel(0, 0), Is.EqualTo(SKColors.Red));
+            Assert.That(nullRevision.GetPixel(0, 0), Is.EqualTo(SKColors.Red));
+            Assert.That(canvas.FinishCalled, Is.False);
+            Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(1));
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Test]
+    public async Task RenderCached_RemainsUsableDuringConcurrentCacheMaintenance()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-maintenance-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await Task.WhenAll(Enumerable.Range(0, 16).Select(i => Task.Run(async () =>
+            {
+                if (i % 2 == 0) TileCache.Prune(directory, 0);
+                using var canvas = new SkiaCanvas();
+                using var image = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, "dataset:v1", 256, 256);
+                TileCache.Prune(directory, 0);
+                Assert.That(image.Width, Is.EqualTo(256));
+                Assert.That(image.Pixels.Any(p => p.Alpha > 0), Is.True);
+            })));
+            using var finalCanvas = new SkiaCanvas();
+            using var final = await Renderer.RenderCached(directory, style, finalCanvas, 1, 2, 8, "dataset:v1", 256, 256);
+            var files = Directory.GetFiles(directory);
+            Assert.That(files, Has.Length.EqualTo(1));
+            using var decoded = SKBitmap.Decode(files[0]);
+            Assert.That(decoded.Pixels.SequenceEqual(final.Pixels), Is.True);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Test]
+    public async Task RenderProfile_SeparatesFinishAndReportsCpuFallbackDespiteGpuHint()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        Renderer.RenderProfile profile = null;
+        Renderer.ProfileSink = value => profile = value;
+        Renderer.CurrentBackendHint = "GPU";
+        using var canvas = new SkiaGpuCanvas(null);
+        using var image = await Renderer.Render(style, canvas, 1, 2, 8, 256, 256);
+        Assert.That(profile.Backend, Is.EqualTo("GPU"), "Legacy hint semantics are preserved.");
+        Assert.That(profile.ActualBackend, Is.EqualTo("CPU"));
+        Assert.That(profile.FinishDrawingMs, Is.GreaterThan(0));
+        Assert.That(profile.DrawTextOnlyMs, Is.GreaterThanOrEqualTo(0));
+        Assert.That(profile.DrawTextMs, Is.EqualTo(profile.DrawTextOnlyMs + profile.FinishDrawingMs).Within(0.000001));
+        Assert.That(profile.TotalMs, Is.GreaterThanOrEqualTo(profile.DrawTextMs));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CacheProfile_ReportsCompleteMissAndHitWithoutRenderingOnHit(bool throwingSink)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-profile-" + Guid.NewGuid().ToString("N"));
+        var reports = new List<CacheRequestProfile>();
+        var renders = 0;
+        Renderer.ProfileSink = _ => renders++;
+        Renderer.CacheProfileSink = value =>
+        {
+            // Publication must be complete when the observer runs.
+            using var decoded = SKBitmap.Decode(Directory.GetFiles(directory, "*.png").Single());
+            Assert.That(decoded, Is.Not.Null);
+            reports.Add(value);
+            if (throwingSink) throw new InvalidOperationException("Observer failure");
+        };
+        try
+        {
+            using var canvas = new SkiaCanvas();
+            using var rendered = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, "dataset:v1", 256, 256);
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected render") };
+            using var hit = await Renderer.RenderCached(directory, style, shouldNotRender, 1, 2, 8, "dataset:v1", 256, 256);
+            Assert.That(reports, Has.Count.EqualTo(2));
+            var miss = reports[0];
+            Assert.That(miss.CacheHit, Is.False);
+            Assert.That(miss.HasBitmap, Is.True);
+            Assert.That(miss.ActualBackend, Is.EqualTo("CPU"));
+            Assert.That(miss.RenderMs, Is.GreaterThan(0));
+            Assert.That(miss.EncodeAndPublishMs, Is.GreaterThan(0));
+            Assert.That(miss.TotalMs, Is.GreaterThanOrEqualTo(miss.LookupMs + miss.RenderMs + miss.EncodeAndPublishMs));
+            var cached = reports[1];
+            Assert.That(cached.CacheHit, Is.True);
+            Assert.That(cached.HasBitmap, Is.True);
+            Assert.That(cached.ActualBackend, Is.EqualTo("DiskCache"));
+            Assert.That(cached.RenderMs, Is.Zero);
+            Assert.That(cached.EncodeAndPublishMs, Is.Zero);
+            Assert.That(cached.TotalMs, Is.GreaterThanOrEqualTo(cached.LookupMs));
+            Assert.That(renders, Is.EqualTo(1));
+            Assert.That(hit.Pixels.SequenceEqual(rendered.Pixels), Is.True);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Test]
+    public async Task CacheProfile_ReportsMissingTileWithoutClaimingSuccessfulRender()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(null));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "cache-missing-profile-" + Guid.NewGuid().ToString("N"));
+        CacheRequestProfile report = null;
+        Renderer.CacheProfileSink = value => report = value;
+        try
+        {
+            using var image = await Renderer.RenderCached(directory, style, new RecordingCanvas(), 1, 2, 8, 256, 256);
+            Assert.That(image, Is.Null);
+            Assert.That(report, Is.Not.Null);
+            Assert.That(report.HasBitmap, Is.False);
+            Assert.That(report.CacheHit, Is.False);
+            Assert.That(report.ActualBackend, Is.EqualTo("Unknown"));
+            Assert.That(report.EncodeAndPublishMs, Is.Zero);
+            Assert.That(Directory.GetFiles(directory), Is.Empty);
+        }
+        finally
+        {
+            Directory.Delete(directory);
         }
     }
 

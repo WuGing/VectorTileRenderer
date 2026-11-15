@@ -1,5 +1,13 @@
 # Current rendering pipeline
 
+## 2026-11-07 cache follow-up
+
+RenderCached supports an opt-in stable sourceRevision key while preserving its
+original signature/unversioned keys, and repairs undecodable PNG entries. TileCache.Prune
+provides explicit byte/age maintenance sharing the cache read/publication lock;
+no automatic quota or cleanup schedule. See
+[contracts and validation](../02_Investigation/Cache-Maintenance-2026-11-07.md).
+
 Inspected 2026-09-05 at `a4f8ca8`.
 
 The reusable library targets netstandard2.0, net7.0, net8.0, and net10.0; its project currently sets x64. WPF/WinForms demos host the library; NUnit tests and BenchmarkDotNet experiments are separate projects.

@@ -97,7 +97,7 @@ Validation:
 
 ## R-005: Bound and version disk caching
 
-Status: Proposed
+Status: Implemented
 Priority: Medium
 Area: Caching
 Related findings: F-006
@@ -107,6 +107,15 @@ Target milestone:
 
 Objective:
 Prevent unbounded growth and stale imagery after source changes.
+
+2026-11-07: [Explicit byte/age maintenance](../02_Investigation/Cache-Maintenance-2026-11-07.md)
+implemented with filesystem/concurrency regressions. 100 tests and full build/pack
+pass. Consumers must opt into revisions and maintenance; no automatic schedule/quota.
+
+2026-11-06: [Corrupt PNG recovery](../02_Investigation/Cache-Recovery-2026-11-06.md)
+and [opt-in source revision keys](../02_Investigation/Cache-Identity-2026-11-06.md)
+implemented and validated with 92 tests, full build and pack. Original signatures
+and unversioned keys preserved. Caller adoption and bounded eviction remain open.
 
 Implementation outline:
 - Define source revision and cache key policy; add bounded eviction and safe publication; preserve caller-controlled directories.
@@ -119,7 +128,7 @@ Validation:
 
 ## R-006: Measure complete tile latency before optimization
 
-Status: Proposed
+Status: In progress
 Priority: Medium
 Area: Rendering, Caching
 Related findings: F-007
@@ -129,6 +138,10 @@ Target milestone:
 
 Objective:
 Identify measured bottlenecks and make profiles trustworthy.
+
+2026-11-07: [Additive request/finish metrics](../02_Investigation/Request-Profiling-2026-11-07.md)
+implemented, 104 tests/full build/pack pass. Consumer migration and controlled
+end-to-end workload measurements remain; no optimization claim.
 
 Implementation outline:
 - Separate actual backend, draw, finish/readback, encode/cache and request time. Compare cold/warm workload and concurrency. Extract Renderer blocks only with behavior-preserving coverage.

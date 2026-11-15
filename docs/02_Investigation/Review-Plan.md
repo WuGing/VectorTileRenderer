@@ -1,6 +1,49 @@
 # Review plan — 2026-09-05
 
+2026-11-15: [Positive manual feedback](../00_User-Input/Manual-Validation-2026-11-15.md)
+recorded. Cache/profiling/demo checkpoint reviewed with no blocking finding; see
+[validation and next workload slice](../Handoffs/2026-11-15-reviewed-checkpoint.md).
+
+2026-11-12: [Restore-time Source Link vulnerability blocker fixed](../Handoffs/2026-11-12-sourcelink-build.md).
+SDK-bundled Source Link replaces obsolete package reference; restore-enabled builds
+and 104 tests pass. Resume manual validation.
+
 Scope: code comments and unfinished branches, README known issues, GPU correctness/performance assumptions, backend alternatives, existing docs, and GitHub tracking. Source baseline: `a4f8ca87dbb7870cbae9ca5d61881b0f3e0cedcc`. This is an investigation and documentation change, not a renderer fix.
+
+## 2026-11-07 current follow-up
+
+**Manual checkpoint:** Mapsui integration is ready. Follow the
+[manual checklist](../Manual-Validation.md) and
+[current handoff](../Handoffs/2026-11-07-manual-validation.md). Build/tests and live
+reload/revision smoke checks pass. Review human feedback before further feature work.
+
+[Request/finish profiling](Request-Profiling-2026-11-07.md) implemented with additive
+fields/callbacks preserving legacy semantics. 104 tests, full build and pack pass.
+F-007 Mitigated; R-006 In progress. Next migrate a benchmark/report consumer and
+measure complete warm/fresh/cache hit/miss workloads before optimizing. See the
+[latest handoff](../Handoffs/2026-11-07-request-profiling.md).
+
+## 2026-11-07 cache maintenance
+
+[Explicit bounded maintenance](Cache-Maintenance-2026-11-07.md) implemented:
+100 tests pass, full Release build and pack pass. R-005 Implemented; F-006 remains
+Mitigated pending caller adoption. Next R-006: audit complete request profiling
+boundaries before changing metrics or optimizing. See the
+[current handoff](../Handoffs/2026-11-07-cache-maintenance.md).
+
+## 2026-11-06 cache follow-up
+
+[Source revision keys](Cache-Identity-2026-11-06.md) now implemented as an opt-in
+overload preserving existing signatures/keys: 92 tests, full Release build and pack
+pass. F-006 Mitigated; R-005 In progress. Next define explicit caller-invoked cache
+maintenance and filesystem safety cases before implementing eviction. Current
+[handoff](../Handoffs/2026-11-06-cache-identity.md).
+
+[Corrupt cache recovery](Cache-Recovery-2026-11-06.md) implemented and validated:
+84 tests pass, full Release solution build and pack pass. R-005 source identity and
+eviction remain open. Next bounded slice: reproduce same-style/provider cache
+collisions and define a stable dataset revision token with compatibility and cache-hit
+regressions. See the [latest handoff](../Handoffs/2026-11-06-cache-recovery.md).
 
 Follow-up: the [GPU runtime experiment](Gpu-Validation-2026-09-05.md) is now implemented and executed against library baseline 7bc45e1. The original audit limits below describe the initial pass; consult the experiment for current runtime evidence.
 
