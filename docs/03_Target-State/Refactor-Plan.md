@@ -139,6 +139,20 @@ Target milestone:
 Objective:
 Identify measured bottlenecks and make profiles trustworthy.
 
+2026-11-15: [Marked allocation traces and closure cleanup](../02_Investigation/Style-Allocations-2026-11-15.md)
+cut warm managed allocations about 25% with unchanged pixels; no meaningful elapsed
+gain claimed. 118 tests/full build/pack pass. Review/checkpoint before further
+dictionary/Paint/geometry or decoder experiments.
+
+2026-11-15: [Encoded-output experiment implemented and measured](../02_Investigation/Direct-Png-2026-11-15.md):
+Mapsui directly returns PNG bytes, strict corruption validation retained; 116 tests,
+full build/pack and 2,700 old/new comparison samples pass. Review/UI smoke and later
+build/decode allocation investigation remain. R-006 remains In progress.
+
+2026-11-15: [CPU workload matrix and repeat](../02_Investigation/Request-Workloads-2026-11-15.md)
+now measured. Prioritize an encoded-output experiment preserving bitmap/cache
+contracts; build/decode allocations and distinct-tile/concurrent/GPU workloads remain.
+
 2026-11-07: [Additive request/finish metrics](../02_Investigation/Request-Profiling-2026-11-07.md)
 implemented, 104 tests/full build/pack pass. Consumer migration and controlled
 end-to-end workload measurements remain; no optimization claim.

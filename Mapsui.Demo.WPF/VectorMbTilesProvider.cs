@@ -92,13 +92,9 @@ namespace Mapsui.Demo.WPF
             {
                 var canvas = CanvasFactory.Create(RenderBackend.Auto);
                 using var lifetime = canvas as IDisposable;
-                using var bitmap = await Renderer.RenderCached(cachePath, style, canvas,
+                return await Renderer.RenderCachedPng(cachePath, style, canvas,
                     (int)tileInfo.Index.Col, (int)tileInfo.Index.Row, Convert.ToInt32(tileInfo.Index.Level),
                     sourceRevision, 256, 256, 1);
-                if (bitmap == null) return null;
-                using var image = SKImage.FromBitmap(bitmap);
-                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-                return data.ToArray();
             }
             catch (Exception exception)
             {

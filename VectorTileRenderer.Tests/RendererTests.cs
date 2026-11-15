@@ -466,6 +466,201 @@ public class RendererTests
         }
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task RenderCachedPng_SharesBitmapCacheKeysAndReturnsIndependentOriginalBytes(bool pngFirst)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-shared-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var canvas = new SkiaCanvas();
+            if (pngFirst)
+                Assert.That(await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8, "dataset:v1", 256, 256), Is.Not.Null);
+            else
+            {
+                using var seed = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, "dataset:v1", 256, 256);
+            }
+            var file = Directory.GetFiles(directory).Single();
+            var expected = File.ReadAllBytes(file);
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected miss") };
+            CacheRequestProfile profile = null;
+            Renderer.CacheProfileSink = value => { profile = value; throw new InvalidOperationException("Observer failure"); };
+            var bytes = await Renderer.RenderCachedPng(directory, style, shouldNotRender, 1, 2, 8, "dataset:v1", 256, 256);
+            Assert.That(bytes, Is.EqualTo(expected));
+            Assert.That(profile.HasOutput, Is.True);
+            Assert.That(profile.HasBitmap, Is.False);
+            Assert.That(profile.OutputFormat, Is.EqualTo("Png"));
+            Assert.That(profile.CacheHit, Is.True);
+            Assert.That(profile.RenderMs, Is.Zero);
+            Assert.That(profile.EncodeAndPublishMs, Is.Zero);
+            using var bitmapHit = await Renderer.RenderCached(directory, style, shouldNotRender, 1, 2, 8, "dataset:v1", 256, 256);
+            using var decoded = SKBitmap.Decode(bytes);
+            Assert.That(decoded.Pixels, Is.EqualTo(bitmapHit.Pixels));
+            bytes[0] = 0;
+            Assert.That(File.ReadAllBytes(file), Is.EqualTo(expected));
+            Assert.That(shouldNotRender.FinishCalled, Is.False);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [TestCase(0)]
+    [TestCase(4)]
+    [TestCase(21)]
+    public async Task RenderCachedPng_RepairsEmptyInvalidAndTruncatedPng(int retainedBytes)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-corrupt-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var canvas = new SkiaCanvas();
+            var original = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8, 256, 256);
+            var file = Directory.GetFiles(directory).Single();
+            File.WriteAllBytes(file, original.Take(retainedBytes).ToArray());
+            var repaired = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8, 256, 256);
+            Assert.That(repaired, Is.EqualTo(original));
+            Assert.That(File.ReadAllBytes(file), Is.EqualTo(original));
+            Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(1));
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task RenderCachedPng_ReturnsNullOrPropagatesFailureWithoutPublishing(bool failure)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(failure ? CreateLineTile() : null));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-failure-" + Guid.NewGuid().ToString("N"));
+        CacheRequestProfile report = null;
+        Renderer.CacheProfileSink = value => report = value;
+        try
+        {
+            var canvas = new RecordingCanvas { FinishFailure = new InvalidOperationException("Finish failed") };
+            if (failure)
+            {
+                await Assert.ThatAsync(() => Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8),
+                    Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo("Finish failed"));
+                Assert.That(report, Is.Null);
+            }
+            else
+            {
+                Assert.That(await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8), Is.Null);
+                Assert.That(report.HasOutput, Is.False);
+                Assert.That(report.HasBitmap, Is.False);
+            }
+            Assert.That(Directory.GetFiles(directory), Is.Empty);
+        }
+        finally
+        {
+            Directory.Delete(directory);
+        }
+    }
+
+    [Test]
+    public async Task RenderCachedPng_DisposesInternalBitmapAndReturnsOutputWhenPublicationFails()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-owned-" + Guid.NewGuid().ToString("N"));
+        var canvas = new RecordingCanvas();
+        try
+        {
+            var seed = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8);
+            Assert.That(canvas.LastBitmap.Handle, Is.EqualTo(IntPtr.Zero));
+            var file = Directory.GetFiles(directory).Single();
+            File.Delete(file);
+            // A directory at the PNG path prevents atomic publication without preventing rendering.
+            Directory.CreateDirectory(file);
+            var bytes = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8);
+            Assert.That(bytes, Is.EqualTo(seed));
+            Assert.That(canvas.LastBitmap.Handle, Is.EqualTo(IntPtr.Zero));
+            Assert.That(Directory.GetFiles(directory), Is.Empty);
+            Directory.Delete(file);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            foreach (var child in Directory.GetDirectories(directory)) Directory.Delete(child);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Test]
+    public async Task RenderCachedPng_ConcurrentBitmapAndPngRequestsRemainUsableDuringPruning()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-concurrent-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await Task.WhenAll(Enumerable.Range(0, 12).Select(i => Task.Run(async () =>
+            {
+                using var canvas = new SkiaCanvas();
+                if (i % 2 == 0)
+                {
+                    var bytes = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8, "dataset:v1", 256, 256);
+                    using var decoded = SKBitmap.Decode(bytes);
+                    Assert.That(decoded.Width, Is.EqualTo(256));
+                }
+                else
+                {
+                    using var bitmap = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, "dataset:v1", 256, 256);
+                    Assert.That(bitmap.Width, Is.EqualTo(256));
+                }
+                TileCache.Prune(directory, 0);
+            })));
+            Assert.That(Directory.GetFiles(directory, "*.tmp"), Is.Empty);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [TestCase(null, "")]
+    [TestCase("dataset-a:v1", "dataset-b:v1")]
+    [TestCase("dataset:v1", "dataset:v2")]
+    public async Task RenderCachedPng_IsolatesRevisionsAndReusesMatchingRevision(string firstRevision, string secondRevision)
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-revision-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var canvas = new SkiaCanvas();
+            var first = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8, firstRevision, 256, 256);
+            var tile = CreateLineTile();
+            tile.Layers[0].Features[0].Geometry = [[new Point(0, 0.5), new Point(1, 0.5)]];
+            style.SetSourceProvider("tiles", new StubVectorTileSource(tile));
+            var second = await Renderer.RenderCachedPng(directory, style, canvas, 1, 2, 8, secondRevision, 256, 256);
+            using var firstImage = SKBitmap.Decode(first);
+            using var secondImage = SKBitmap.Decode(second);
+            Assert.That(firstImage.Pixels.SequenceEqual(secondImage.Pixels), Is.False);
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected miss") };
+            Assert.That(await Renderer.RenderCachedPng(directory, style, shouldNotRender, 1, 2, 8, secondRevision, 256, 256), Is.EqualTo(second));
+            Assert.That(shouldNotRender.FinishCalled, Is.False);
+            Assert.That(Directory.GetFiles(directory), Has.Length.EqualTo(2));
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
     private static Style CreateLineStyle()
     {
         var path = TestAssets.WriteTemporaryStyle("""
@@ -521,6 +716,7 @@ public class RendererTests
         public List<List<Point>> LineStrings { get; } = [];
         public bool FinishCalled { get; private set; }
         public Exception FinishFailure { get; set; }
+        public SKBitmap LastBitmap { get; private set; }
 
         public void StartDrawing(double sizeX, double sizeY) { }
         public void DrawBackground(Brush style) { }
@@ -540,7 +736,8 @@ public class RendererTests
             {
                 throw FinishFailure;
             }
-            return new SKBitmap(1, 1);
+            LastBitmap = new SKBitmap(1, 1);
+            return LastBitmap;
         }
     }
 }

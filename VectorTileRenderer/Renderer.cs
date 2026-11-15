@@ -104,13 +104,14 @@ public class Renderer
         var profile = new CacheRequestProfile { X = x, Y = y, Zoom = z };
         var bitmap = await RenderCachedCore(cachePath, style, canvas, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers, profile, started);
         profile.HasBitmap = bitmap != null;
+        profile.HasOutput = bitmap != null;
         profile.TotalMs = ElapsedMs(started, Stopwatch.GetTimestamp());
         try { sink(profile); }
         catch (Exception) { /* Profiling must not affect returned bitmap ownership. */ }
         return bitmap;
     }
 
-    private async static Task<SKBitmap> RenderCachedCore(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers, CacheRequestProfile profile, long started)
+    private static string GetCachePath(string cachePath, Style style, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers)
     {
         string layerString = whiteListLayers == null ? "" : string.Join(",-", whiteListLayers.ToArray());
 
@@ -141,6 +142,12 @@ public class Renderer
 
         var fileName = x + "x" + y + "-" + z + "-" + hash + ".png";
         var path = Path.Combine(cachePath, fileName);
+        return path;
+    }
+
+    private async static Task<SKBitmap> RenderCachedCore(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers, CacheRequestProfile profile, long started)
+    {
+        var path = GetCachePath(cachePath, style, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers);
 
         lock (cacheLock)
         {
@@ -183,33 +190,130 @@ public class Renderer
         // complete file atomically; an optional cache failure must not lose a render.
         if (bitmap != null)
         {
-            var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
             {
-                using (var image = SKImage.FromBitmap(bitmap))
-                using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
-                using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                {
-                    data.SaveTo(stream);
-                }
-                lock (cacheLock)
-                {
-                    if (!File.Exists(path)) File.Move(temporaryPath, path);
-                }
+                using var image = SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                PublishPng(path, data);
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
-            finally
-            {
-                try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
-            }
         }
 
         if (profile != null && bitmap != null)
             profile.EncodeAndPublishMs = ElapsedMs(encodeStarted, Stopwatch.GetTimestamp());
         return bitmap;
+    }
+
+    private static void PublishPng(string path, SKData data)
+    {
+        var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                data.SaveTo(stream);
+            }
+            lock (cacheLock)
+            {
+                if (!File.Exists(path)) File.Move(temporaryPath, path);
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        finally
+        {
+            try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>Returns caller-owned PNG bytes using the same cache keys as RenderCached.</summary>
+    public static Task<byte[]> RenderCachedPng(string cachePath, Style style, ICanvas canvas, int x, int y, double z, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    {
+        return RenderCachedPng(cachePath, style, canvas, x, y, z, null, sizeX, sizeY, scale, whiteListLayers);
+    }
+
+    /// <summary>Returns caller-owned PNG bytes with explicit source revision identity.</summary>
+    /// <remarks>
+    /// Hits return the original file bytes after full decode validation. Misses encode once,
+    /// complete best-effort atomic publication, and dispose the internally rendered bitmap.
+    /// Canvas ownership remains with the caller. Null means the source tile was missing.
+    /// </remarks>
+    public async static Task<byte[]> RenderCachedPng(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    {
+        var sink = CacheProfileSink;
+        var profile = sink == null ? null : new CacheRequestProfile { X = x, Y = y, Zoom = z, OutputFormat = "Png" };
+        var started = profile == null ? 0 : Stopwatch.GetTimestamp();
+        var bytes = await RenderCachedPngCore(cachePath, style, canvas, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers, profile, started);
+        if (profile != null)
+        {
+            profile.HasOutput = bytes != null;
+            profile.TotalMs = ElapsedMs(started, Stopwatch.GetTimestamp());
+            try { sink(profile); }
+            catch (Exception) { /* Observers must not prevent returning valid PNG output. */ }
+        }
+        return bytes;
+    }
+
+    private async static Task<byte[]> RenderCachedPngCore(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers, CacheRequestProfile profile, long started)
+    {
+        var path = GetCachePath(cachePath, style, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers);
+        byte[] bytes = null;
+        lock (cacheLock)
+        {
+            if (File.Exists(path))
+            {
+                try
+                {
+                    var cached = File.ReadAllBytes(path);
+                    // Do not return JPEGs disguised as PNGs or truncate validation to a header check.
+                    if (cached.Length >= 8 && cached[0] == 137 && cached[1] == 80 && cached[2] == 78 && cached[3] == 71
+                        && cached[4] == 13 && cached[5] == 10 && cached[6] == 26 && cached[7] == 10)
+                    {
+                        using var stream = new SKMemoryStream(cached);
+                        using var codec = SKCodec.Create(stream);
+                        if (codec != null)
+                        {
+                            using var decoded = new SKBitmap(codec.Info);
+                            if (codec.GetPixels(decoded.Info, decoded.GetPixels()) == SKCodecResult.Success)
+                                bytes = cached;
+                        }
+                    }
+                    if (bytes == null) File.Delete(path);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
+        if (bytes != null)
+        {
+            if (profile != null)
+            {
+                profile.CacheHit = true;
+                profile.ActualBackend = "DiskCache";
+                profile.LookupMs = ElapsedMs(started, Stopwatch.GetTimestamp());
+            }
+            return bytes;
+        }
+
+        var renderStarted = profile == null ? 0 : Stopwatch.GetTimestamp();
+        if (profile != null) profile.LookupMs = ElapsedMs(started, renderStarted);
+        using var bitmap = await Render(style, canvas, x, y, z, sizeX, sizeY, scale, whiteListLayers);
+        var encodeStarted = profile == null ? 0 : Stopwatch.GetTimestamp();
+        if (profile != null)
+        {
+            profile.RenderMs = ElapsedMs(renderStarted, encodeStarted);
+            profile.ActualBackend = bitmap == null ? "Unknown" : GetActualBackend(canvas);
+        }
+        if (bitmap == null) return null;
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        bytes = data.ToArray();
+        PublishPng(path, data);
+        if (profile != null) profile.EncodeAndPublishMs = ElapsedMs(encodeStarted, Stopwatch.GetTimestamp());
+        return bytes;
     }
 
     static SKBitmap LoadBitmap(string path)

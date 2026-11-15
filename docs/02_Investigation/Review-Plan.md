@@ -1,5 +1,26 @@
 # Review plan — 2026-09-05
 
+2026-11-15 checkpoint: [PNG/allocation work reviewed and validated](../Handoffs/2026-11-15-performance-checkpoint.md),
+118 tests/full restore-enabled build/pack pass. Next isolate native decode/conversion
+allocations before another optimization. Performance findings retain their measured
+scope and GPU/text limitations remain open.
+
+2026-11-15 allocation follow-up: [traced evaluator closure removed](Style-Allocations-2026-11-15.md),
+warm managed allocations 18.85 → 14.08 MiB, essentially flat focused latency.
+118 tests/full build/pack and eight byte-identical reference PNGs pass. See
+[latest handoff](../Handoffs/2026-11-15-style-allocations.md).
+
+2026-11-15 direct PNG follow-up: [API implemented and measured](Direct-Png-2026-11-15.md),
+Mapsui migrated, 116 tests/full build/pack pass. Hit medians 87–91% lower in this
+CPU matrix; no universal tail-latency claim. See the
+[latest handoff](../Handoffs/2026-11-15-direct-png.md).
+
+2026-11-15 workload follow-up: [CPU baseline measured](Request-Workloads-2026-11-15.md),
+3,150 main/repeat samples, exact output checks. Encoding and provider reuse are
+material; warm build/style allocations merit later profiling. Next define and test
+encoded-output caching for Mapsui; see the
+[latest handoff](../Handoffs/2026-11-15-workload-measurements.md). R-006 In progress.
+
 2026-11-15: [Positive manual feedback](../00_User-Input/Manual-Validation-2026-11-15.md)
 recorded. Cache/profiling/demo checkpoint reviewed with no blocking finding; see
 [validation and next workload slice](../Handoffs/2026-11-15-reviewed-checkpoint.md).

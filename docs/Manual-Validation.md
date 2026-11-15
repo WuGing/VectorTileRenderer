@@ -68,6 +68,11 @@ focused on visible requests.
 
 ## Checks already completed
 
+2026-11-15 PNG output follow-up: Mapsui now calls RenderCachedPng and returns its
+bytes directly. The map and cache controls are unchanged. Cache hits still perform
+full decode validation, but no longer re-encode; misses encode only once. The
+profiler now also exposes OutputFormat and HasOutput for byte-oriented consumers.
+
 2026-11-15: [User feedback](00_User-Input/Manual-Validation-2026-11-15.md) reports
 that the demo seems to work and authorizes proceeding. This records a positive
 manual checkpoint, not individual checklist/GPU/performance results.

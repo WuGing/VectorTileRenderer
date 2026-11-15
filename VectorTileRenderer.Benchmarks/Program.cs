@@ -6,6 +6,21 @@ public static class Program
 {
     public static void Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--allocation-workload")
+        {
+            AllocationInvestigation.Run(args[1..]);
+            return;
+        }
+        if (args.Length > 0 && args[0] == "--allocation-report")
+        {
+            AllocationInvestigation.Report(args[1], args[2]);
+            return;
+        }
+        if (args.Length > 0 && args[0] == "--request-timing")
+        {
+            Environment.ExitCode = RequestTiming.Run(args[1..]);
+            return;
+        }
         BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
     }
 }

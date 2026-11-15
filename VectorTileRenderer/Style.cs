@@ -1063,17 +1063,13 @@ public class Style
         if (token.GetType().IsArray)
         {
             var array = token as object[];
-            //List<object> result = new List<object>();
-
-            //foreach (object item in array)
-            //{
-            //    var obj = GetValue(item, attributes);
-            //    result.Add(obj);
-            //}
-
-            //return result.ToArray();
-
-            return array.Select(item => GetValue(item, attributes)).ToArray();
+            if (array.Length == 0) return Array.Empty<object>();
+            var result = new object[array.Length];
+            for (var i = 0; i < array.Length; i++)
+            {
+                result[i] = GetValue(array[i], attributes);
+            }
+            return result;
         }
         else if (token is Dictionary<string, object>)
         {

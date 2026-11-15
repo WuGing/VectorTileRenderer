@@ -5,6 +5,40 @@ namespace VectorTileRenderer.Tests;
 [TestFixture]
 public class StyleTests
 {
+    [Test]
+    [NonParallelizable]
+    public void ValidateLayer_ScalarFilterDoesNotAllocatePerEvaluation()
+    {
+        var path = TestAssets.WriteTemporaryStyle("""
+            { "layers": [{ "id": "roads", "type": "line", "filter": ["==", "class", "major"] }] }
+            """);
+        var style = new Style(path);
+        var attributes = new Dictionary<string, object> { ["class"] = "major" };
+        var layer = style.Layers[0];
+        for (var i = 0; i < 100; i++) style.ValidateLayer(layer, 14, attributes);
+        var accepted = true;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 10000; i++) accepted &= style.ValidateLayer(layer, 14, attributes);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.That(accepted, Is.True);
+        Assert.That(allocated, Is.LessThan(4096), "Repeated scalar filters must not allocate an evaluation closure per call.");
+    }
+
+    [Test]
+    public void ParseStyle_ResolvesArrayAttributesWithoutChangingSourceArrays()
+    {
+        var path = TestAssets.WriteTemporaryStyle("""
+            { "layers": [{ "id": "roads", "type": "line", "paint": { "line-dasharray": ["$first", "$second"] } }] }
+            """);
+        var style = new Style(path);
+        var layer = style.Layers[0];
+        var first = style.ParseStyle(layer, 1, new Dictionary<string, object> { ["$first"] = 2d, ["$second"] = 4d });
+        var second = style.ParseStyle(layer, 1, new Dictionary<string, object> { ["$first"] = 3d, ["$second"] = 5d });
+        Assert.That(first.Paint.LineDashArray, Is.EqualTo(new[] { 2d, 4d }));
+        Assert.That(second.Paint.LineDashArray, Is.EqualTo(new[] { 3d, 5d }));
+        Assert.That((object[])layer.Paint["line-dasharray"], Is.EqualTo(new object[] { "$first", "$second" }));
+    }
+
     [TestCase("en-US")]
     [TestCase("de-DE")]
     [TestCase("fr-FR")]

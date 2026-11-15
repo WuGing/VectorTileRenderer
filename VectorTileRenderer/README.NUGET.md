@@ -112,6 +112,31 @@ synchronous disk operation away from latency-sensitive requests. Other processes
 are not coordinated, and subsequent renders can grow the cache again. No automatic
 maintenance is enabled; temporary-file scavenging remains caller-managed.
 
+## PNG output without re-encoding
+
+Byte-oriented consumers can use the same cache through `RenderCachedPng`:
+
+```csharp
+byte[] png = await Renderer.RenderCachedPng(
+    cachePath, style, canvas, x, y, zoom,
+    sourceRevision: "regional-map:2026-11-06", sizeX: 256, sizeY: 256);
+```
+
+The returned array is caller-owned; modifying it cannot change the published file.
+On a miss, the renderer encodes once, atomically publishes those bytes where possible,
+and returns them after disposing its internal bitmap. On a hit, it returns the
+existing PNG bytes after checking the PNG signature and a successful full Skia codec
+decode. This deliberately retains validation decoding; it avoids re-encoding rather
+than bypassing corruption checks. Empty, invalid, truncated or undecodable entries
+are removed and rendered again. Non-PNG images at a PNG cache path are replaced.
+
+Both APIs use identical keys and share readable cache entries, revision rules,
+publication locks and pruning. Bitmap API signatures and bitmap ownership remain
+unchanged. A missing source tile returns null; rendering/encoding failures propagate.
+IO/permission failures during optional publication still return usable PNG output.
+The caller still disposes the canvas; PNG output is a managed array requiring no
+disposal. This API does not infer source revisions or create a GPU host context.
+
 ## Request profiling
 
 `Renderer.ProfileSink` still reports successful renders. Existing `Backend` remains
@@ -121,8 +146,10 @@ separate text and finish/readback measurements. GPU is reported only after a
 successful finish with an enabled GPU surface; third-party canvases report Unknown.
 
 `Renderer.CacheProfileSink` receives one `CacheRequestProfile` for each normally
-completed RenderCached call, including cache hits and missing tiles. `CacheHit` and
-`HasBitmap` distinguish those outcomes. `ActualBackend` is DiskCache on a hit,
+completed RenderCached or RenderCachedPng call, including cache hits and missing
+tiles. `CacheHit` and `HasOutput` distinguish those outcomes. `OutputFormat` is
+Bitmap or Png; legacy `HasBitmap` remains true only for returned bitmap output.
+`ActualBackend` is DiskCache on a hit,
 CPU/GPU for known rendered canvases, or Unknown for missing/custom output.
 `LookupMs` includes key construction, directory setup, lock waits, cache decoding
 and corrupt-entry removal. `RenderMs` includes the complete inner Render call
