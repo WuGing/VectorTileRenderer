@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Mapsui.Demo.WPF
 {
-    class VectorMbTilesSource : ITileSource, ILocalTileSource
+    class VectorMbTilesSource : ITileSource, ILocalTileSource, System.IDisposable
     {
         VectorMbTilesProvider provider;
 
@@ -12,10 +12,10 @@ namespace Mapsui.Demo.WPF
         public string Name { get; } = "VectorMbTileSource";
         public Attribution Attribution { get; } = new Attribution();
 
-        public VectorMbTilesSource(string path, string stylePath, string cachePath)
+        public VectorMbTilesSource(string path, string stylePath, string cachePath, int revision = 0)
         {
             Schema = GetTileSchema();
-            provider = new VectorMbTilesProvider(path, stylePath, cachePath);
+            provider = new VectorMbTilesProvider(path, stylePath, cachePath, revision);
         }
 
         public static ITileSchema GetTileSchema()
@@ -31,5 +31,7 @@ namespace Mapsui.Demo.WPF
         {
             return provider.GetTileAsync(tileInfo);
         }
+
+        public void Dispose() => provider.Dispose();
     }
 }

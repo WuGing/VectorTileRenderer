@@ -1,5 +1,7 @@
 # VectorTileRenderer investigation documentation
 
+Current manual checkpoint: [Mapsui validation checklist](Manual-Validation.md).
+
 Start with [the review plan](02_Investigation/Review-Plan.md), [the evidence inventory](02_Investigation/Evidence.md), and [the GPU/backend investigation](03_Target-State/Backend-Investigation.md). This documentation records the audit of commit `a4f8ca87dbb7870cbae9ca5d61881b0f3e0cedcc` on 2026-09-05.
 
 The follow-up [GPU runtime experiment](02_Investigation/Gpu-Validation-2026-09-05.md)

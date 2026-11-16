@@ -55,12 +55,10 @@ public class PbfTileSource : IVectorTileSource
     
     private static VectorTile LoadStream(Stream stream)
     {
-        var mbLayers = VectorTileParser.Parse(stream);
-
-        return BaseTileToVector(mbLayers);
+        return PbfParser.ParseRendererTile(stream);
     }
 
-    private static string ConvertGeometryType(Tile.GeomType type) => type switch
+    internal static string ConvertGeometryType(Tile.GeomType type) => type switch
     {
         Tile.GeomType.LineString => "LineString",
         Tile.GeomType.Point => "Point",
@@ -71,6 +69,7 @@ public class PbfTileSource : IVectorTileSource
     private static VectorTile BaseTileToVector(List<Mapbox.Vector.Tile.VectorTileLayer> baseTile)
     {
         var result = new VectorTile();
+        result.Layers.Capacity = baseTile.Count;
 
         foreach (var lyr in baseTile)
         {
@@ -78,41 +77,21 @@ public class PbfTileSource : IVectorTileSource
             {
                 Name = lyr.Name
             };
+            vectorLayer.Features.Capacity = lyr.VectorTileFeatures.Count;
 
             foreach (var feat in lyr.VectorTileFeatures)
             {
-                var featureAttributes = new Dictionary<string, object>(feat.Attributes.Count);
-                foreach (var pair in feat.Attributes)
-                {
-                    featureAttributes[pair.Key] = pair.Value;
-                }
-
-                var vectorFeature = new VectorTileFeature
+                var vectorFeature = new VectorTileFeature(feat.Attributes.Count, feat.Geometry.Count)
                 {
                     Extent = 1,
-                    GeometryType = ConvertGeometryType(feat.GeometryType),
-                    Attributes = featureAttributes
+                    GeometryType = ConvertGeometryType(feat.GeometryType)
                 };
-
-                var vectorGeometry = new List<List<Point>>();
-
-                foreach (var points in feat.Geometry)
+                foreach (var pair in feat.Attributes)
                 {
-                    var pointCountHint = points.Count;
-                    var vectorPoints = pointCountHint > 0 ? new List<Point>(pointCountHint) : [];
-
-                    foreach (var coordinate in points)
-                    {
-                        var dX = coordinate.X / (double)feat.Extent;
-                        var dY = coordinate.Y / (double)feat.Extent;
-
-                        vectorPoints.Add(new Point(dX, dY));
-                    }
-
-                    vectorGeometry.Add(vectorPoints);
+                    vectorFeature.Attributes[pair.Key] = pair.Value;
                 }
 
-                vectorFeature.Geometry = vectorGeometry;
+                AddGeometry(vectorFeature, feat.Geometry, feat.Extent);
                 vectorLayer.Features.Add(vectorFeature);
             }
 
@@ -120,6 +99,21 @@ public class PbfTileSource : IVectorTileSource
         }
 
         return result;
+    }
+
+    internal static void AddGeometry(VectorTileFeature feature, List<ArraySegment<Coordinate>> geometry, uint extent)
+    {
+        foreach (var points in geometry)
+        {
+            var vectorPoints = points.Count > 0 ? new List<Point>(points.Count) : [];
+            foreach (var coordinate in points)
+            {
+                var dX = coordinate.X / (double)extent;
+                var dY = coordinate.Y / (double)extent;
+                vectorPoints.Add(new Point(dX, dY));
+            }
+            feature.Geometry.Add(vectorPoints);
+        }
     }
     
     private static bool IsGZipped(Stream stream)

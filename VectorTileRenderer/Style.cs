@@ -392,6 +392,12 @@ public class Style
         return false;
     }
 
+    internal bool NeedsFeatureStyleAttributes(Layer layer)
+    {
+        return TokenUsesFeatureAttributes(layer.Paint) || TokenUsesFeatureAttributes(layer.Layout)
+            || (layer.Layout != null && layer.Layout.ContainsKey("text-field") && TokenUsesFeatureAttributes(layer.ID));
+    }
+
     public Brush ParseStyle(Layer layer, double scale, Dictionary<string, object> attributes)
     {
         var paintData = layer.Paint;
@@ -884,64 +890,61 @@ public class Style
             return true;
         }
         var operation = filterArray[0] as string;
-        bool result;
-
-        if (operation == "all")
-        {
-            for (int i = 1; i < filterArray.Length; i++)
-            {
-                if (filterArray[i] is not object[] subFilter)
-                {
-                    continue;
-                }
-                if (!ValidateUsingFilter(subFilter, attributes))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-        else if (operation == "any")
-        {
-            for (int i = 1; i < filterArray.Length; i++)
-            {
-                if (filterArray[i] is not object[] subFilter)
-                {
-                    continue;
-                }
-                if (ValidateUsingFilter(subFilter, attributes))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else if (operation == "none")
-        {
-            result = false;
-            for (int i = 1; i < filterArray.Length; i++)
-            {
-                if (filterArray[i] is not object[] subFilter)
-                {
-                    continue;
-                }
-                if (ValidateUsingFilter(subFilter, attributes))
-                {
-                    result = true;
-                }
-            }
-            return !result;
-        }
-
         switch (operation)
         {
+            case "all":
+            {
+                for (int i = 1; i < filterArray.Length; i++)
+                {
+                    if (filterArray[i] is not object[] subFilter)
+                    {
+                        continue;
+                    }
+                    if (!ValidateUsingFilter(subFilter, attributes))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            case "any":
+            {
+                for (int i = 1; i < filterArray.Length; i++)
+                {
+                    if (filterArray[i] is not object[] subFilter)
+                    {
+                        continue;
+                    }
+                    if (ValidateUsingFilter(subFilter, attributes))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            case "none":
+            {
+                var result = false;
+                for (int i = 1; i < filterArray.Length; i++)
+                {
+                    if (filterArray[i] is not object[] subFilter)
+                    {
+                        continue;
+                    }
+                    if (ValidateUsingFilter(subFilter, attributes))
+                    {
+                        result = true;
+                    }
+                }
+                return !result;
+            }
             case "==":
             case "!=":
             case ">":
             case ">=":
             case "<":
             case "<=":
-
+            {
                 var key = (string)filterArray[1];
                 if (!attributes.TryGetValue(key, out var attributeValue))
                 {
@@ -956,26 +959,20 @@ public class Style
                 var valueA = (IComparable)attributeValue;
                 var valueB = GetValue(filterArray[2], attributes);
 
-                if (IsNumber(valueA) && IsNumber(valueB))
+                int comparison;
+                if (valueA is string textA && valueB is string textB)
                 {
-                    valueA = Convert.ToDouble(valueA);
-                    valueB = Convert.ToDouble(valueB);
+                    comparison = textA.CompareTo(textB);
                 }
-
-                if (key is not null)
+                else if (IsNumber(valueA) && IsNumber(valueB))
                 {
-                    if (key == "capital")
-                    {
-
-                    }
+                    comparison = Convert.ToDouble(valueA).CompareTo(Convert.ToDouble(valueB));
                 }
-
-                if (valueA.GetType() != valueB.GetType())
+                else
                 {
-                    return false;
+                    if (valueA.GetType() != valueB.GetType()) return false;
+                    comparison = valueA.CompareTo(valueB);
                 }
-
-                var comparison = valueA.CompareTo(valueB);
 
                 switch (operation)
                 {
@@ -993,56 +990,51 @@ public class Style
                         return comparison <= 0;
                 }
 
-                break;
-        }
-
-        if (operation == "has")
-        {
-            return attributes.ContainsKey(filterArray[1] as string);
-        }
-        else if (operation == "!has")
-        {
-            return !attributes.ContainsKey(filterArray[1] as string);
-        }
-
-        if (operation == "in")
-        {
-            var key = filterArray[1] as string;
-            if (!attributes.TryGetValue(key, out var value))
-            {
                 return false;
             }
-
-            for (int i = 2; i < filterArray.Length; i++)
+            case "has":
+                return attributes.ContainsKey(filterArray[1] as string);
+            case "!has":
+                return !attributes.ContainsKey(filterArray[1] as string);
+            case "in":
             {
-                var item = filterArray[i];
-                if (GetValue(item, attributes).Equals(value))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else if (operation == "!in")
-        {
-            var key = filterArray[1] as string;
-            if (!attributes.TryGetValue(key, out var value))
-            {
-                return true;
-            }
-
-            for (int i = 2; i < filterArray.Length; i++)
-            {
-                var item = filterArray[i];
-                if (GetValue(item, attributes).Equals(value))
+                var key = filterArray[1] as string;
+                if (!attributes.TryGetValue(key, out var value))
                 {
                     return false;
                 }
-            }
-            return true;
-        }
 
-        return false;
+                for (int i = 2; i < filterArray.Length; i++)
+                {
+                    var item = filterArray[i];
+                    if (GetValue(item, attributes).Equals(value))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            case "!in":
+            {
+                var key = filterArray[1] as string;
+                if (!attributes.TryGetValue(key, out var value))
+                {
+                    return true;
+                }
+
+                for (int i = 2; i < filterArray.Length; i++)
+                {
+                    var item = filterArray[i];
+                    if (GetValue(item, attributes).Equals(value))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            default:
+                return false;
+        }
     }
 
     static object GetValue(object token, Dictionary<string, object> attributes = null)
@@ -1063,17 +1055,13 @@ public class Style
         if (token.GetType().IsArray)
         {
             var array = token as object[];
-            //List<object> result = new List<object>();
-
-            //foreach (object item in array)
-            //{
-            //    var obj = GetValue(item, attributes);
-            //    result.Add(obj);
-            //}
-
-            //return result.ToArray();
-
-            return array.Select(item => GetValue(item, attributes)).ToArray();
+            if (array.Length == 0) return Array.Empty<object>();
+            var result = new object[array.Length];
+            for (var i = 0; i < array.Length; i++)
+            {
+                result[i] = GetValue(array[i], attributes);
+            }
+            return result;
         }
         else if (token is Dictionary<string, object>)
         {
@@ -1081,13 +1069,17 @@ public class Style
             if (dict.TryGetValue("stops", out var stopsValue))
             {
                 var stops = stopsValue as object[];
-                // if it has stops, it's interpolation domain now :P
-                //var pointStops = stops.Select(item => new Tuple<double, JToken>((item as JArray)[0].Value<double>(), (item as JArray)[1])).ToList();
-                var pointStops = stops.Select(item => new Tuple<double, object>(Convert.ToDouble((item as object[])[0]), (item as object[])[1])).ToList();
+                if (stops == null) throw new ArgumentNullException("source");
+                var pointStops = new (double Zoom, object Value)[stops.Length];
+                for (var i = 0; i < stops.Length; i++)
+                {
+                    var stop = stops[i] as object[];
+                    pointStops[i] = (Convert.ToDouble(stop[0]), stop[1]);
+                }
 
                 var zoom = (double)attributes["$zoom"];
-                var minZoom = pointStops.First().Item1;
-                var maxZoom = pointStops.Last().Item1;
+                var minZoom = pointStops.First().Zoom;
+                var maxZoom = pointStops.Last().Zoom;
                 double power = 1;
 
                 if (minZoom == 5 && maxZoom == 10)
@@ -1098,28 +1090,28 @@ public class Style
                 double zoomA = minZoom;
                 double zoomB = maxZoom;
                 int zoomAIndex = 0;
-                int zoomBIndex = pointStops.Count - 1;
+                int zoomBIndex = pointStops.Length - 1;
 
                 // get min max zoom bounds from array
                 if (zoom <= minZoom)
                 {
                     //zoomA = minZoom;
                     //zoomB = pointStops[1].Item1;
-                    return pointStops.First().Item2;
+                    return pointStops.First().Value;
                 }
                 else if (zoom >= maxZoom)
                 {
                     //zoomA = pointStops[pointStops.Count - 2].Item1;
                     //zoomB = maxZoom;
-                    return pointStops.Last().Item2;
+                    return pointStops.Last().Value;
                 }
                 else
                 {
                     // checking for consecutive values
-                    for (int i = 1; i < pointStops.Count; i++)
+                    for (int i = 1; i < pointStops.Length; i++)
                     {
-                        var previousZoom = pointStops[i - 1].Item1;
-                        var thisZoom = pointStops[i].Item1;
+                        var previousZoom = pointStops[i - 1].Zoom;
+                        var thisZoom = pointStops[i].Zoom;
 
                         if (zoom >= previousZoom && zoom <= thisZoom)
                         {
@@ -1140,7 +1132,7 @@ public class Style
 
                 //var referenceElement = (stops[0] as object[])[1];
 
-                return InterpolateValues(pointStops[zoomAIndex].Item2, pointStops[zoomBIndex].Item2, zoomA, zoomB, zoom, power, false);
+                return InterpolateValues(pointStops[zoomAIndex].Value, pointStops[zoomBIndex].Value, zoomA, zoomB, zoom, power, false);
             }
         }
 

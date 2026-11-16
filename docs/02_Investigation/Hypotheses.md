@@ -22,6 +22,10 @@ What still needs to be verified:
 - Whether GPU is active and produces valid output.
 
 Evidence so far:
+- [2026-11-15 CPU workload measurements](Request-Workloads-2026-11-15.md) show
+  material provider decoding/build/style and PNG output costs with repeated tiles.
+  They do not compare verified GPU, cold disk, contention or navigation hit rates;
+  those parts of this broad hypothesis remain open.
 - Renderer.RenderCached and RenderProfile; SkiaGpuCanvas.TryCreate/OnBeforeFinishDrawing.
 - Existing benchmarks cover isolated operations, not proof of GPU speed.
 - The [Windows GPU experiment](Gpu-Validation-2026-09-05.md) measures separate finish/readback and complete render-plus-PNG costs on one GPU. It supports workload-specific conclusions only; concurrent cache contention, true cold disk and demo latency remain unmeasured.

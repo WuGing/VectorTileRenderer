@@ -9,7 +9,7 @@ namespace WuGing.VectorTileRenderer;
 public class Renderer
 {
     // TODO make it instance based... maybe
-    private static readonly object cacheLock = new();
+    internal static readonly object cacheLock = new();
     private static readonly AsyncLocal<string> backendHint = new();
 
     public static string CurrentBackendHint
@@ -48,6 +48,9 @@ public class Renderer
         public double BuildStyleEvalMs { get; set; }
         public double DrawGeometryMs { get; set; }
         public double DrawTextMs { get; set; }
+        public double DrawTextOnlyMs { get; set; }
+        public double FinishDrawingMs { get; set; }
+        public string ActualBackend { get; set; }
         public double TotalMs { get; set; }
         public int VisualLayerCount { get; set; }
         public int GeometryDrawCallCount { get; set; }
@@ -61,12 +64,54 @@ public class Renderer
     // Optional callback for measuring hot-path timings in real app runs.
     public static Action<RenderProfile> ProfileSink { get; set; }
 
+    // One report for a normally completed cache request, including hits and missing tiles.
+    public static Action<CacheRequestProfile> CacheProfileSink { get; set; }
+
+    private static string GetActualBackend(ICanvas canvas) => canvas switch
+    {
+        SkiaGpuCanvas gpu => gpu.IsGpuEnabled ? "GPU" : "CPU",
+        SkiaCanvas => "CPU",
+        _ => "Unknown",
+    };
+
     static double ElapsedMs(long startTimestamp, long endTimestamp)
     {
         return (endTimestamp - startTimestamp) * 1000.0 / Stopwatch.Frequency;
     }
 
-    public async static Task<SKBitmap> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double z, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    public static Task<SKBitmap> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double z, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    {
+        return RenderCached(cachePath, style, canvas, x, y, z, null, sizeX, sizeY, scale, whiteListLayers);
+    }
+
+    /// <summary>Renders using a caller-supplied identity for all source datasets and their revisions.</summary>
+    /// <remarks>
+    /// Change sourceRevision whenever any bound source data changes. Null retains the legacy,
+    /// unversioned cache keys; non-null tokens (including empty) select a separate cache namespace.
+    /// Tokens are hashed into filenames and are not inferred from provider instances or paths.
+    /// </remarks>
+    public static Task<SKBitmap> RenderCached(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    {
+        var sink = CacheProfileSink;
+        if (sink == null)
+            return RenderCachedCore(cachePath, style, canvas, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers, null, 0);
+        return ProfileCachedRequest(cachePath, style, canvas, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers, sink);
+    }
+
+    private async static Task<SKBitmap> ProfileCachedRequest(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers, Action<CacheRequestProfile> sink)
+    {
+        var started = Stopwatch.GetTimestamp();
+        var profile = new CacheRequestProfile { X = x, Y = y, Zoom = z };
+        var bitmap = await RenderCachedCore(cachePath, style, canvas, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers, profile, started);
+        profile.HasBitmap = bitmap != null;
+        profile.HasOutput = bitmap != null;
+        profile.TotalMs = ElapsedMs(started, Stopwatch.GetTimestamp());
+        try { sink(profile); }
+        catch (Exception) { /* Profiling must not affect returned bitmap ownership. */ }
+        return bitmap;
+    }
+
+    private static string GetCachePath(string cachePath, Style style, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers)
     {
         string layerString = whiteListLayers == null ? "" : string.Join(",-", whiteListLayers.ToArray());
 
@@ -89,51 +134,197 @@ public class Renderer
             }
         }
 
-        var json = JsonSerializer.Serialize(bundle);
-        var hash = Utils.Sha256(json).Substring(0, 12); // get 12 digits to avoid fs length issues
+        var json = sourceRevision == null
+            ? JsonSerializer.Serialize(bundle)
+            : JsonSerializer.Serialize(new { bundle, sourceRevision });
+        var hash = Utils.Sha256(json);
+        if (sourceRevision == null) hash = hash.Substring(0, 12); // Preserve existing unversioned filenames.
 
         var fileName = x + "x" + y + "-" + z + "-" + hash + ".png";
         var path = Path.Combine(cachePath, fileName);
+        return path;
+    }
+
+    private async static Task<SKBitmap> RenderCachedCore(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers, CacheRequestProfile profile, long started)
+    {
+        var path = GetCachePath(cachePath, style, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers);
 
         lock (cacheLock)
         {
             if (File.Exists(path))
             {
-                return LoadBitmap(path);
-            }
-        }
-
-        var bitmap = await Render(style, canvas, x, y, z, sizeX, sizeY, scale, whiteListLayers);
-
-        // Complete encoding before returning the caller-owned bitmap. Publish a
-        // complete file atomically; an optional cache failure must not lose a render.
-        if (bitmap != null)
-        {
-            var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                using (var image = SKImage.FromBitmap(bitmap))
-                using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
-                using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                try
                 {
-                    data.SaveTo(stream);
+                    var cached = LoadBitmap(path);
+                    if (cached != null)
+                    {
+                        if (profile != null)
+                        {
+                            profile.CacheHit = true;
+                            profile.ActualBackend = "DiskCache";
+                            profile.LookupMs = ElapsedMs(started, Stopwatch.GetTimestamp());
+                        }
+                        return cached;
+                    }
+
+                    // Remove undecodable entries while holding the publication lock,
+                    // so another request can publish a complete replacement.
+                    File.Delete(path);
                 }
-                lock (cacheLock)
-                {
-                    if (!File.Exists(path)) File.Move(temporaryPath, path);
-                }
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-            finally
-            {
-                try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
                 catch (IOException) { }
                 catch (UnauthorizedAccessException) { }
             }
         }
 
+        var renderStarted = profile == null ? 0 : Stopwatch.GetTimestamp();
+        if (profile != null) profile.LookupMs = ElapsedMs(started, renderStarted);
+        var bitmap = await Render(style, canvas, x, y, z, sizeX, sizeY, scale, whiteListLayers);
+        var encodeStarted = profile == null ? 0 : Stopwatch.GetTimestamp();
+        if (profile != null)
+        {
+            profile.RenderMs = ElapsedMs(renderStarted, encodeStarted);
+            profile.ActualBackend = bitmap == null ? "Unknown" : GetActualBackend(canvas);
+        }
+
+        // Complete encoding before returning the caller-owned bitmap. Publish a
+        // complete file atomically; an optional cache failure must not lose a render.
+        if (bitmap != null)
+        {
+            try
+            {
+                using var data = EncodeCachePng(bitmap, style);
+                PublishPng(path, data);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
+        if (profile != null && bitmap != null)
+            profile.EncodeAndPublishMs = ElapsedMs(encodeStarted, Stopwatch.GetTimestamp());
         return bitmap;
+    }
+
+    private static SKData EncodeCachePng(SKBitmap bitmap, Style style)
+    {
+        using var pixels = bitmap.PeekPixels()
+            ?? throw new InvalidOperationException("PNG encoding requires readable bitmap pixels.");
+        // Unfiltered level 1 suits flat map graphics. Full filtering keeps
+        // gradient/imagery-heavy raster styles compact.
+        var options = style.Layers.Any(layer => layer.Source?.Type == "raster")
+            ? SKPngEncoderOptions.Default
+            : new SKPngEncoderOptions(SKPngEncoderFilterFlags.None, 1);
+        return pixels.Encode(options)
+            ?? throw new InvalidOperationException("PNG encoding failed.");
+    }
+
+    private static void PublishPng(string path, SKData data)
+    {
+        var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                data.SaveTo(stream);
+            }
+            lock (cacheLock)
+            {
+                if (!File.Exists(path)) File.Move(temporaryPath, path);
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        finally
+        {
+            try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>Returns caller-owned PNG bytes using the same cache keys as RenderCached.</summary>
+    public static Task<byte[]> RenderCachedPng(string cachePath, Style style, ICanvas canvas, int x, int y, double z, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    {
+        return RenderCachedPng(cachePath, style, canvas, x, y, z, null, sizeX, sizeY, scale, whiteListLayers);
+    }
+
+    /// <summary>Returns caller-owned PNG bytes with explicit source revision identity.</summary>
+    /// <remarks>
+    /// Hits return the original file bytes after full decode validation. Misses encode once,
+    /// complete best-effort atomic publication, and dispose the internally rendered bitmap.
+    /// Canvas ownership remains with the caller. Null means the source tile was missing.
+    /// </remarks>
+    public async static Task<byte[]> RenderCachedPng(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX = 512, double sizeY = 512, double scale = 1, List<string> whiteListLayers = null)
+    {
+        var sink = CacheProfileSink;
+        var profile = sink == null ? null : new CacheRequestProfile { X = x, Y = y, Zoom = z, OutputFormat = "Png" };
+        var started = profile == null ? 0 : Stopwatch.GetTimestamp();
+        var bytes = await RenderCachedPngCore(cachePath, style, canvas, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers, profile, started);
+        if (profile != null)
+        {
+            profile.HasOutput = bytes != null;
+            profile.TotalMs = ElapsedMs(started, Stopwatch.GetTimestamp());
+            try { sink(profile); }
+            catch (Exception) { /* Observers must not prevent returning valid PNG output. */ }
+        }
+        return bytes;
+    }
+
+    private async static Task<byte[]> RenderCachedPngCore(string cachePath, Style style, ICanvas canvas, int x, int y, double z, string sourceRevision, double sizeX, double sizeY, double scale, List<string> whiteListLayers, CacheRequestProfile profile, long started)
+    {
+        var path = GetCachePath(cachePath, style, x, y, z, sourceRevision, sizeX, sizeY, scale, whiteListLayers);
+        byte[] bytes = null;
+        lock (cacheLock)
+        {
+            if (File.Exists(path))
+            {
+                try
+                {
+                    var cached = File.ReadAllBytes(path);
+                    // Do not return JPEGs disguised as PNGs or truncate validation to a header check.
+                    if (cached.Length >= 8 && cached[0] == 137 && cached[1] == 80 && cached[2] == 78 && cached[3] == 71
+                        && cached[4] == 13 && cached[5] == 10 && cached[6] == 26 && cached[7] == 10)
+                    {
+                        using var stream = new SKMemoryStream(cached);
+                        using var codec = SKCodec.Create(stream);
+                        if (codec != null)
+                        {
+                            using var decoded = new SKBitmap(codec.Info);
+                            if (codec.GetPixels(decoded.Info, decoded.GetPixels()) == SKCodecResult.Success)
+                                bytes = cached;
+                        }
+                    }
+                    if (bytes == null) File.Delete(path);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
+        if (bytes != null)
+        {
+            if (profile != null)
+            {
+                profile.CacheHit = true;
+                profile.ActualBackend = "DiskCache";
+                profile.LookupMs = ElapsedMs(started, Stopwatch.GetTimestamp());
+            }
+            return bytes;
+        }
+
+        var renderStarted = profile == null ? 0 : Stopwatch.GetTimestamp();
+        if (profile != null) profile.LookupMs = ElapsedMs(started, renderStarted);
+        using var bitmap = await Render(style, canvas, x, y, z, sizeX, sizeY, scale, whiteListLayers);
+        var encodeStarted = profile == null ? 0 : Stopwatch.GetTimestamp();
+        if (profile != null)
+        {
+            profile.RenderMs = ElapsedMs(renderStarted, encodeStarted);
+            profile.ActualBackend = bitmap == null ? "Unknown" : GetActualBackend(canvas);
+        }
+        if (bitmap == null) return null;
+        using var data = EncodeCachePng(bitmap, style);
+        bytes = data.ToArray();
+        PublishPng(path, data);
+        if (profile != null) profile.EncodeAndPublishMs = ElapsedMs(encodeStarted, Stopwatch.GetTimestamp());
+        return bytes;
     }
 
     static SKBitmap LoadBitmap(string path)
@@ -333,7 +524,9 @@ public class Renderer
 
                 if (categorizedVectorLayers.TryGetValue(layer.SourceLayer, out var tileLayers))
                 {
-                    var layerNeedsFeatureAttributes = style.NeedsFeatureAttributes(layer);
+                    var layerNeedsFeatureStyleAttributes = style.NeedsFeatureStyleAttributes(layer);
+                    var layerNeedsFeatureAttributes = (layer.Filter != null && layer.Filter.Length > 0)
+                        || layerNeedsFeatureStyleAttributes;
                     Brush staticLayerBrush = null;
 
                     if (!layerNeedsFeatureAttributes)
@@ -364,7 +557,7 @@ public class Renderer
                     foreach (var tileLayer in tileLayers)
                     {
                         var requiredGeometryType = GetRequiredGeometryTypeForLayer(layer.Type);
-                        IEnumerable<VectorTileFeature> candidateFeatures = tileLayer.Features;
+                        var candidateFeatures = tileLayer.Features;
 
                         if (requiredGeometryType != null)
                         {
@@ -456,7 +649,11 @@ public class Renderer
 
                             if (style.ValidateLayer(layer, actualZoom, attributes))
                             {
-                                var brush = style.ParseStyle(layer, scale, attributes);
+                                var brush = staticLayerBrush ?? style.ParseStyle(layer, scale, attributes);
+                                if (!layerNeedsFeatureStyleAttributes)
+                                {
+                                    staticLayerBrush = brush;
+                                }
 
                                 if (profilingEnabled)
                                 {
@@ -641,6 +838,7 @@ public class Renderer
             }
         }
 
+        var finishStarted = profilingEnabled ? Stopwatch.GetTimestamp() : 0;
         var bitmap = canvas.FinishDrawing();
 
         if (profilingEnabled)
@@ -655,11 +853,14 @@ public class Renderer
                     Y = y,
                     Zoom = z,
                     Backend = CurrentBackendHint ?? "Unknown",
+                    ActualBackend = GetActualBackend(canvas),
                     BuildVisualLayersMs = ElapsedMs(buildStart, buildEnd),
                     TileFetchDecodeMs = tileFetchDecodeMs,
                     BuildStyleEvalMs = buildStyleEvalMs,
                     DrawGeometryMs = ElapsedMs(geometryStart, geometryEnd),
                     DrawTextMs = ElapsedMs(textStart, textEnd),
+                    DrawTextOnlyMs = ElapsedMs(textStart, finishStarted),
+                    FinishDrawingMs = ElapsedMs(finishStarted, textEnd),
                     TotalMs = ElapsedMs(totalStart, textEnd),
                     VisualLayerCount = orderedVisualLayers.Count,
                     GeometryDrawCallCount = geometryDrawCallCount,

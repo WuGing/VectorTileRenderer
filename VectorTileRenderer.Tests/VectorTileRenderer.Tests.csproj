@@ -18,5 +18,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\VectorTileRenderer\VectorTileRenderer.csproj" />
+    <Compile Include="../VectorTileRenderer.Benchmarks/ProtobufExperiment/*.cs" Link="ProtobufExperiment/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

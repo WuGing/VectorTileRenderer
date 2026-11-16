@@ -4,6 +4,17 @@ Verified 2026-09-05.
 
 ## Repository and authentication
 
+### 2026-11-15 release delivery
+
+[PR #12](https://github.com/WuGing/VectorTileRenderer/pull/12) prepares
+0.1.1-preview.7 from `codex/release-0.1.1-preview.7` into `master`. Repository
+default branch and push permission were revalidated, and the open-PR duplicate
+check was empty before creation. Git Credential Manager authenticated Git/REST
+operations. See the [release checkpoint](../Handoffs/2026-11-15-release-preview7.md)
+for scope, performance evidence and validation boundaries.
+
+### Original connection record
+
 - Origin: `https://github.com/WuGing/VectorTileRenderer.git`; upstream: `https://github.com/AliFlux/VectorTileRenderer.git`.
 - `git ls-remote origin HEAD` returned `a4f8ca87dbb7870cbae9ca5d61881b0f3e0cedcc`, matching local HEAD at audit time. This verifies connectivity and matching HEAD, not every remote branch.
 - The connected GitHub account is WuGing; connector reads succeeded.
