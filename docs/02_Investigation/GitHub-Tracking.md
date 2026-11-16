@@ -4,6 +4,12 @@ Verified 2026-09-05.
 
 ## Repository and authentication
 
+### 2026-11-16 publishing repair
+
+[PR #13](https://github.com/WuGing/VectorTileRenderer/pull/13) migrates NuGet uploads
+to OIDC trusted publishing. Local workflow lint passes. Account policy/NUGET_USER
+setup is pending. See the [handoff](../Handoffs/2026-11-16-nuget-trusted-publishing.md).
+
 ### 2026-11-15 release delivery
 
 [PR #12](https://github.com/WuGing/VectorTileRenderer/pull/12) prepares
