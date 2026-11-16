@@ -4,7 +4,7 @@ Date: 2026-11-15
 Repository: https://github.com/WuGing/VectorTileRenderer
 Branch: codex/release-0.1.1-preview.7
 Base: master
-Pull request:
+Pull request: https://github.com/WuGing/VectorTileRenderer/pull/12
 
 ## Scope
 
