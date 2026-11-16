@@ -1,7 +1,7 @@
 # NuGet trusted publishing — 2026-11-16
 
 Branch: codex/nuget-trusted-publishing
-Pull request:
+Pull request: https://github.com/WuGing/VectorTileRenderer/pull/13
 
 The publish job in `.github/workflows/nuget-pack-publish.yml` requests OIDC through
 `NuGet/login@v1` with `id-token: write`. Package and symbol uploads use the returned
