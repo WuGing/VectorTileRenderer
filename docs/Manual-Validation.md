@@ -1,5 +1,24 @@
 # Manual validation: Mapsui demo
 
+## Current hand-test build — 0.1.1-preview.7
+
+Open [Mapsui.Demo.WPF.exe](../artifacts/manual-testing-current/Mapsui.Demo.WPF.exe)
+from the published `artifacts/manual-testing-current` folder. It includes the
+current direct geometry decoder and earlier performance work, with Zurich data,
+styles and 48 fonts. Keep the accompanying files/folders together. It uses the
+installed .NET Desktop Runtime 10 on Windows x64.
+
+[Build information](../artifacts/manual-testing-current/BUILD-INFO.txt) records the
+validated renderer hash. Release build, 205 tests, 20 Debug geometry/parser tests,
+packaging and publish pass. Exact pixels match all eight cases and typed snapshots
+match all four fixtures. Automatic launch through the desktop tool timed out
+waiting for app approval, and a subsequent window inventory showed no demo window.
+Startup and interaction checks are for this manual pass.
+
+```powershell
+& "C:\Source\VectorTileRenderer\artifacts\manual-testing-current\Mapsui.Demo.WPF.exe"
+```
+
 The demo is ready for a human visual/interaction pass. The window title is
 **VectorTileRenderer — manual validation**. It starts with the checked-in Zurich
 dataset and Basic style. If it is not running, from the repository root use:
@@ -46,9 +65,9 @@ the dataset's coverage. Cache misses with missing tile output are counted as mis
   actual CPU/GPU status, geometry, text-only and finish times. A cache hit shows
   DiskCache; the last-render line can refer to an earlier request. Finish can round
   to 0.0 ms at display precision.
-- These request timings exclude the demo's final PNG encoding for Mapsui, display
-  scheduling and canvas creation. They are not whole-screen frame times or a
-  controlled benchmark. Auto without a suitable host GPU context normally uses CPU;
+- Request timings cover RenderCachedPng, including miss encoding/publication.
+  Display scheduling and canvas creation are outside those request measurements.
+  The overlay supplies interactive diagnostics. Auto without a suitable host GPU context normally uses CPU;
   CPU output is not proof of GPU support. Existing GPU parity limits remain.
 
 ## Cache policy and scope

@@ -535,6 +535,35 @@ public class RendererTests
         }
     }
 
+    [Test]
+    public async Task RenderCachedPng_ReadsLegacyEncodedEntryAndReturnsItsOriginalBytes()
+    {
+        var style = CreateLineStyle();
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var directory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "png-legacy-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var canvas = new SkiaCanvas();
+            using var bitmap = await Renderer.RenderCached(directory, style, canvas, 1, 2, 8, 256, 256);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var legacyData = image.Encode(SKEncodedImageFormat.Png, 100);
+            var legacy = legacyData.ToArray();
+            var file = Directory.GetFiles(directory).Single();
+            File.WriteAllBytes(file, legacy);
+            var shouldNotRender = new RecordingCanvas { FinishFailure = new InvalidOperationException("Unexpected miss") };
+            var actual = await Renderer.RenderCachedPng(directory, style, shouldNotRender, 1, 2, 8, 256, 256);
+            Assert.That(actual, Is.EqualTo(legacy));
+            using var decoded = SKBitmap.Decode(actual);
+            Assert.That(decoded.Pixels, Is.EqualTo(bitmap.Pixels));
+            Assert.That(shouldNotRender.FinishCalled, Is.False);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task RenderCachedPng_ReturnsNullOrPropagatesFailureWithoutPublishing(bool failure)
@@ -661,6 +690,105 @@ public class RendererTests
         }
     }
 
+    [Test]
+    public async Task Render_ReusesFilteredConstantBrushOnlyWithinItsLayerAndRequest()
+    {
+        var style = CreateLineStyle();
+        var tile = CreateLineTile();
+        var feature = tile.Layers[0].Features[0];
+        feature.Attributes["class"] = "major";
+        tile.Layers[0].Features.Add(feature);
+        var firstLayer = style.Layers[0];
+        firstLayer.Filter = ["==", "class", "major"];
+        style.SetSourceProvider("tiles", new StubVectorTileSource(tile));
+        var canvas = new RecordingCanvas();
+        using var first = await Renderer.Render(style, canvas, 1, 2, 8);
+        Assert.That(canvas.LineBrushes, Has.Count.EqualTo(2));
+        var originalBrush = canvas.LineBrushes[0];
+        Assert.That(canvas.LineBrushes[1], Is.SameAs(originalBrush));
+
+        firstLayer.Paint["line-width"] = 3d;
+        style.Layers.Add(new Layer
+        {
+            ID = "other", Index = firstLayer.Index + 1, Type = "line", Source = firstLayer.Source,
+            SourceLayer = firstLayer.SourceLayer, Filter = ["has", "class"],
+            Paint = new() { ["line-width"] = 5d }
+        });
+        canvas.LineBrushes.Clear();
+        using var second = await Renderer.Render(style, canvas, 1, 2, 8);
+        Assert.That(canvas.LineBrushes.Select(brush => brush.Paint.LineWidth), Is.EqualTo(new[] { 3d, 3d, 5d, 5d }));
+        Assert.That(canvas.LineBrushes[0], Is.Not.SameAs(originalBrush));
+        Assert.That(canvas.LineBrushes[0], Is.Not.SameAs(canvas.LineBrushes[2]));
+    }
+
+    [Test]
+    public async Task Render_ObservesNewFilterAndFeatureStyleDependenciesOnFollowingRequest()
+    {
+        var style = CreateLineStyle();
+        var tile = CreateLineTile();
+        var feature = tile.Layers[0].Features[0];
+        feature.Attributes["$width"] = 4d;
+        var secondFeature = new VectorTileFeature
+        {
+            GeometryType = feature.GeometryType, Extent = feature.Extent, Geometry = feature.Geometry,
+            Attributes = new() { ["$width"] = 6d }
+        };
+        tile.Layers[0].Features.Add(secondFeature);
+        style.SetSourceProvider("tiles", new StubVectorTileSource(tile));
+        var canvas = new RecordingCanvas();
+        using var first = await Renderer.Render(style, canvas, 1, 2, 8);
+        style.Layers[0].Paint["line-width"] = "$width";
+        style.Layers[0].Filter = [">", "$width", 5d];
+        canvas.LineBrushes.Clear();
+        using var second = await Renderer.Render(style, canvas, 1, 2, 8);
+        Assert.That(canvas.LineBrushes, Has.Count.EqualTo(1));
+        Assert.That(canvas.LineBrushes[0].Paint.LineWidth, Is.EqualTo(6d));
+        style.Layers[0].Filter[2] = 3d;
+        canvas.LineBrushes.Clear();
+        using var third = await Renderer.Render(style, canvas, 1, 2, 8);
+        Assert.That(canvas.LineBrushes.Select(brush => brush.Paint.LineWidth), Is.EqualTo(new[] { 4d, 6d }));
+        Assert.That(canvas.LineBrushes[0], Is.Not.SameAs(canvas.LineBrushes[1]));
+    }
+
+    [Test]
+    public async Task Render_DelaysFilteredBrushEvaluationUntilAFeatureIsAccepted()
+    {
+        var style = CreateLineStyle();
+        style.Layers[0].Filter = ["has", "missing"];
+        style.Layers[0].Paint["line-width"] = "invalid-number";
+        style.SetSourceProvider("tiles", new StubVectorTileSource(CreateLineTile()));
+        var canvas = new RecordingCanvas();
+        using var ignored = await Renderer.Render(style, canvas, 1, 2, 8);
+        Assert.That(canvas.LineBrushes, Is.Empty);
+        style.Layers[0].Filter = ["!has", "missing"];
+        Assert.ThrowsAsync<FormatException>(async () =>
+        {
+            using var bitmap = await Renderer.Render(style, canvas, 1, 2, 8);
+        });
+    }
+
+    [Test]
+    public async Task Render_ResolvesTextPlaceholdersIntroducedByLayerIdPerFeature()
+    {
+        var style = CreateLineStyle();
+        var tile = CreateLineTile();
+        var feature = tile.Layers[0].Features[0];
+        feature.Attributes["name"] = "First";
+        tile.Layers[0].Features.Add(new VectorTileFeature
+        {
+            GeometryType = feature.GeometryType, Extent = feature.Extent, Geometry = feature.Geometry,
+            Attributes = new() { ["name"] = "Second" }
+        });
+        var layer = style.Layers[0];
+        layer.ID = "{name}";
+        layer.Filter = ["has", "name"];
+        layer.Layout["text-field"] = "$id";
+        style.SetSourceProvider("tiles", new StubVectorTileSource(tile));
+        var canvas = new RecordingCanvas();
+        using var bitmap = await Renderer.Render(style, canvas, 1, 2, 8);
+        Assert.That(canvas.LineBrushes.Select(brush => brush.Text), Is.EqualTo(new[] { "First", "Second" }));
+    }
+
     private static Style CreateLineStyle()
     {
         var path = TestAssets.WriteTemporaryStyle("""
@@ -714,13 +842,18 @@ public class RendererTests
     {
         public bool ClipOverflow { get; set; }
         public List<List<Point>> LineStrings { get; } = [];
+        public List<Brush> LineBrushes { get; } = [];
         public bool FinishCalled { get; private set; }
         public Exception FinishFailure { get; set; }
         public SKBitmap LastBitmap { get; private set; }
 
         public void StartDrawing(double sizeX, double sizeY) { }
         public void DrawBackground(Brush style) { }
-        public void DrawLineString(List<Point> geometry, Brush style) => LineStrings.Add(geometry);
+        public void DrawLineString(List<Point> geometry, Brush style)
+        {
+            LineStrings.Add(geometry);
+            LineBrushes.Add(style);
+        }
         public void DrawPolygon(List<Point> geometry, Brush style) { }
         public void DrawPoint(Point geometry, Brush style) { }
         public void DrawText(Point geometry, Brush style) { }

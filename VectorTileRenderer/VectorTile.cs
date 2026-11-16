@@ -68,8 +68,19 @@ public class VectorTileLayer
 
 public class VectorTileFeature
 {
+    public VectorTileFeature() : this(0, 0)
+    {
+    }
+
+    // Decoders know the sizes and can avoid constructing containers only to replace them.
+    internal VectorTileFeature(int attributeCapacity, int geometryCapacity)
+    {
+        Attributes = new Dictionary<string, object>(attributeCapacity);
+        Geometry = new List<List<Point>>(geometryCapacity);
+    }
+
     public double Extent { get; set; }
     public string GeometryType { get; set; }
-    public Dictionary<string, object> Attributes = [];
-    public List<List<Point>> Geometry = [];
+    public Dictionary<string, object> Attributes;
+    public List<List<Point>> Geometry;
 }

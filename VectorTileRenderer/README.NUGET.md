@@ -2,7 +2,23 @@
 
 Vector map tile rendering library for .NET.
 
-## Release notes - 0.1.1-preview.6
+## Release notes - 0.1.1-preview.7
+
+- Add direct cached PNG output for byte-oriented clients, including the Mapsui demo.
+- Harden cache source identity, corrupt-entry recovery, atomic publication and explicit pruning.
+- Reduce PBF decoding allocations with direct renderer-feature and geometry conversion.
+- Speed lossless vector PNG encoding and reuse layer brushes, native paths and paints while preserving exact CPU pixels.
+- Refresh render-time feature dependencies after mutable style edits and reject nonadvancing malformed geometry.
+- Add paired CPU request measurements, decode compatibility tests and packaged third-party notices.
+- Use SDK-provided Source Link to resolve the restore-time package audit failure.
+- GPU support remains experimental; cross-tile label placement and Unicode shaping/fallback remain incomplete.
+
+CPU workload measurements and validation are recorded in the repository's
+`docs/02_Investigation` reports. Results cover checked-in datasets and specified
+cache states. Desktop interaction, concurrency and GPU performance have their own
+validation scope.
+
+## Previous release - 0.1.1-preview.6
 
 - Fixed upside-down, warped and truncated road labels; use intact glyphs and measured text width.
 - Prefer gently bending road sections and reject unreadable placements while preserving tile-edge protections.
@@ -113,6 +129,11 @@ are not coordinated, and subsequent renders can grow the cache again. No automat
 maintenance is enabled; temporary-file scavenging remains caller-managed.
 
 ## PNG output without re-encoding
+
+New cache PNGs for vector-only styles use unfiltered rows and zlib level 1 for
+fast lossless encoding. Styles containing raster sources use Skia's default full
+filtering and level 6 compression for compact imagery/gradients. Decoded pixels
+are preserved; compressed byte representation and file size depend on content.
 
 Byte-oriented consumers can use the same cache through `RenderCachedPng`:
 

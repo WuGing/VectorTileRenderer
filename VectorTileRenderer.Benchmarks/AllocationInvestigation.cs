@@ -1,5 +1,7 @@
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.IO.Compression;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Diagnostics.Tracing.Etlx;
 using SkiaSharp;
@@ -16,7 +18,7 @@ internal static class AllocationInvestigation
         [Event(1, Opcode = EventOpcode.Info)] public void Window(string value) => WriteEvent(1, value);
     }
 
-    public static void Run(string[] args)
+    public static void Run(string[] args, bool parserCpu = false)
     {
         var root = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
         var count = args.Length > 1 ? int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 100;
@@ -30,6 +32,23 @@ internal static class AllocationInvestigation
             FontDirectory = Path.Combine(root, "styles", "fonts")
         };
         style.SetSourceProvider(0, warm);
+        using var raw = warm.GetRawTile(8580, 10646, 14);
+        var gzip = raw.ReadByte() == 0x1f && raw.ReadByte() == 0x8b;
+        raw.Position = 0;
+        using var buffer = new MemoryStream();
+        if (gzip)
+        {
+            using var decompressed = new GZipStream(raw, CompressionMode.Decompress, true);
+            decompressed.CopyTo(buffer);
+        }
+        else raw.CopyTo(buffer);
+        var pbf = buffer.ToArray();
+        using var parsedStream = new MemoryStream(pbf, false);
+        var parsed = Mapbox.Vector.Tile.VectorTileParser.Parse(parsedStream);
+        var convert = typeof(PbfTileSource).GetMethod("BaseTileToVector", BindingFlags.NonPublic | BindingFlags.Static)
+            .CreateDelegate<Func<List<Mapbox.Vector.Tile.VectorTileLayer>, VectorTile>>();
+        foreach (var property in typeof(Mapbox.Vector.Tile.VectorTileFeature).GetProperties())
+            Console.WriteLine($"Parser feature {property.Name}: {property.PropertyType}");
         // No profiling callbacks, PNG encoding or pixel-array validation inside allocation windows.
         Renderer.ProfileSink = null;
         Renderer.CacheProfileSink = null;
@@ -41,9 +60,26 @@ internal static class AllocationInvestigation
         };
         Action render = () => Draw(style, new SkiaCanvas());
         Action build = () => Draw(style, new NoDrawCanvas());
-        foreach (var action in new[] { decode, render, build })
+        Action parser = () =>
+        {
+            using var stream = new MemoryStream(pbf, false);
+            var result = Mapbox.Vector.Tile.VectorTileParser.Parse(stream);
+            if (result.Count != parsed.Count) throw new InvalidOperationException("Parser layer count changed.");
+            GC.KeepAlive(result);
+        };
+        Action conversion = () =>
+        {
+            var result = convert(parsed);
+            if (result.Layers.Count != tile.Layers.Count) throw new InvalidOperationException("Conversion layer count changed.");
+            GC.KeepAlive(result);
+        };
+        var phases = parserCpu
+            ? new[] { (Name: "parser-only", Action: parser), (Name: "conversion-only", Action: conversion), (Name: "fresh-decode", Action: decode) }
+            : new[] { (Name: "warm-render", Action: render), (Name: "fresh-decode", Action: decode),
+                (Name: "warm-build-no-draw", Action: build), (Name: "parser-only", Action: parser), (Name: "conversion-only", Action: conversion) };
+        foreach (var action in phases.Select(phase => phase.Action))
             for (var i = 0; i < 5; i++) action();
-        foreach (var phase in new[] { (Name: "warm-render", Action: render), (Name: "fresh-decode", Action: decode), (Name: "warm-build-no-draw", Action: build) })
+        foreach (var phase in phases)
         {
             Markers.Log.Window("start|" + phase.Name);
             var thread = Environment.CurrentManagedThreadId;
@@ -61,6 +97,48 @@ internal static class AllocationInvestigation
         using var lifetime = canvas as IDisposable;
         using var bitmap = Renderer.Render(style, canvas, 8580, 10646, 14, 512, 512).GetAwaiter().GetResult();
         if (bitmap == null) throw new InvalidOperationException("Render did not complete.");
+    }
+
+    public static void TimePreparation(string root, string output, int iterations)
+    {
+        if (iterations < 10) throw new ArgumentOutOfRangeException(nameof(iterations));
+        using var source = new SingleMbTilesSource(Path.Combine(root, "tiles", "zurich.mbtiles"));
+        var tile = source.GetVectorTile(8580, 10646, 14).GetAwaiter().GetResult();
+        if (tile == null) throw new InvalidOperationException("Required native tile is missing.");
+        var style = new Style(Path.Combine(root, "styles", "bright-style.json"))
+        {
+            FontDirectory = Path.Combine(root, "styles", "fonts")
+        };
+        style.SetSourceProvider(0, source);
+        Renderer.ProfileSink = null;
+        Renderer.CacheProfileSink = null;
+        var warmup = System.Diagnostics.Stopwatch.StartNew();
+        do
+        {
+            Draw(style, new NoDrawCanvas());
+        }
+        while (warmup.Elapsed < TimeSpan.FromSeconds(1));
+        var samples = new List<object>();
+        for (var i = 0; i < iterations; i++)
+        {
+            var thread = Environment.CurrentManagedThreadId;
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            Draw(style, new NoDrawCanvas());
+            var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            if (thread != Environment.CurrentManagedThreadId) throw new InvalidOperationException("Preparation crossed threads.");
+            samples.Add(new { Iteration = i, ElapsedMs = elapsed, ManagedBytes = allocated });
+        }
+        File.WriteAllText(output, JsonSerializer.Serialize(new
+        {
+            LibrarySha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(Style).Assembly.Location))),
+            Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+            Iterations = iterations, MinimumWarmupMs = 1000, Tile = "zurich-z14-8580-10646", Size = 512,
+            Policy = "Decoded tile reused, observers off, no-op drawing backend with 1x1 bitmap. Includes layer preparation, ordering and no-op dispatch/disposal. Excludes real rasterization, PNG encoding and source decode. No forced GC. Attribution experiment requires separate exact-pixel/full-request checks.",
+            Samples = samples
+        }, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine(output);
     }
 
     public static void Report(string tracePath, string output)
@@ -100,7 +178,7 @@ internal static class AllocationInvestigation
             samples[key] = (previous.Weight + data.AllocationAmount64, previous.Count + 1);
         };
         source.Process();
-        if (totals.Count != 3 || samples.Count == 0)
+        if (totals.Count < 3 || samples.Count == 0)
         {
             Console.WriteLine($"Completed windows: {totals.Count}, sample groups: {samples.Count}");
             foreach (var data in log.Events.Where(data => data.ProviderName == "VectorTileRenderer-Allocation"))
@@ -129,7 +207,7 @@ internal static class AllocationInvestigation
         }
     }
 
-    // Allocation attribution only: retain Renderer layer preparation while removing backend drawing.
+    // Preparation attribution only: retain layer preparation while removing backend drawing.
     private sealed class NoDrawCanvas : ICanvas
     {
         public bool ClipOverflow { get; set; }

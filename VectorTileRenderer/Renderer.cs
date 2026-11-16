@@ -192,8 +192,7 @@ public class Renderer
         {
             try
             {
-                using var image = SKImage.FromBitmap(bitmap);
-                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                using var data = EncodeCachePng(bitmap, style);
                 PublishPng(path, data);
             }
             catch (IOException) { }
@@ -203,6 +202,19 @@ public class Renderer
         if (profile != null && bitmap != null)
             profile.EncodeAndPublishMs = ElapsedMs(encodeStarted, Stopwatch.GetTimestamp());
         return bitmap;
+    }
+
+    private static SKData EncodeCachePng(SKBitmap bitmap, Style style)
+    {
+        using var pixels = bitmap.PeekPixels()
+            ?? throw new InvalidOperationException("PNG encoding requires readable bitmap pixels.");
+        // Unfiltered level 1 suits flat map graphics. Full filtering keeps
+        // gradient/imagery-heavy raster styles compact.
+        var options = style.Layers.Any(layer => layer.Source?.Type == "raster")
+            ? SKPngEncoderOptions.Default
+            : new SKPngEncoderOptions(SKPngEncoderFilterFlags.None, 1);
+        return pixels.Encode(options)
+            ?? throw new InvalidOperationException("PNG encoding failed.");
     }
 
     private static void PublishPng(string path, SKData data)
@@ -308,8 +320,7 @@ public class Renderer
             profile.ActualBackend = bitmap == null ? "Unknown" : GetActualBackend(canvas);
         }
         if (bitmap == null) return null;
-        using var image = SKImage.FromBitmap(bitmap);
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var data = EncodeCachePng(bitmap, style);
         bytes = data.ToArray();
         PublishPng(path, data);
         if (profile != null) profile.EncodeAndPublishMs = ElapsedMs(encodeStarted, Stopwatch.GetTimestamp());
@@ -513,7 +524,9 @@ public class Renderer
 
                 if (categorizedVectorLayers.TryGetValue(layer.SourceLayer, out var tileLayers))
                 {
-                    var layerNeedsFeatureAttributes = style.NeedsFeatureAttributes(layer);
+                    var layerNeedsFeatureStyleAttributes = style.NeedsFeatureStyleAttributes(layer);
+                    var layerNeedsFeatureAttributes = (layer.Filter != null && layer.Filter.Length > 0)
+                        || layerNeedsFeatureStyleAttributes;
                     Brush staticLayerBrush = null;
 
                     if (!layerNeedsFeatureAttributes)
@@ -544,7 +557,7 @@ public class Renderer
                     foreach (var tileLayer in tileLayers)
                     {
                         var requiredGeometryType = GetRequiredGeometryTypeForLayer(layer.Type);
-                        IEnumerable<VectorTileFeature> candidateFeatures = tileLayer.Features;
+                        var candidateFeatures = tileLayer.Features;
 
                         if (requiredGeometryType != null)
                         {
@@ -636,7 +649,11 @@ public class Renderer
 
                             if (style.ValidateLayer(layer, actualZoom, attributes))
                             {
-                                var brush = style.ParseStyle(layer, scale, attributes);
+                                var brush = staticLayerBrush ?? style.ParseStyle(layer, scale, attributes);
+                                if (!layerNeedsFeatureStyleAttributes)
+                                {
+                                    staticLayerBrush = brush;
+                                }
 
                                 if (profilingEnabled)
                                 {

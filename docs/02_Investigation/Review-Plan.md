@@ -1,5 +1,110 @@
 # Review plan — 2026-09-05
 
+2026-11-15 release preparation advances the package to 0.1.1-preview.7 and gathers
+the cache/direct-PNG, parser, encoding, preparation and path work into a delivery PR.
+See [release checkpoint](../Handoffs/2026-11-15-release-preview7.md) for scope,
+performance evidence and validation boundaries.
+
+2026-11-15 [fresh decode](Fresh-Decode-2026-11-15.md) optimized with direct geometry
+conversion. Complete fresh misses 9–10% faster, 2.36 MiB less allocation. Exact
+pixels/snapshots, 205 Release tests/20 Debug geometry tests/build/pack/publish pass.
+Current Mapsui hand-test build is published. Desktop launch approval timed out.
+Next collect manual feedback and profile current requests. See
+[handoff](../Handoffs/2026-11-15-fresh-decode.md).
+
+2026-11-15 [post-submission profile and cumulative measurements](Post-Submission-Profile-2026-11-15.md)
+complete. Fresh decode leads individual timers at 34%, observer-free drawing ~38%
+fresh / 50% warm. Path construction ~3–4%. Direct pre-parser/current comparison
+shows 42–43% fresh / 44–50% warm lower latency. 2,700 exact-pixel timings, two
+zero-loss traces. Next isolate fresh decode for new-tile workloads. See
+[handoff](../Handoffs/2026-11-15-post-submission-profile.md).
+
+2026-11-15 [path submission/lifetime](Path-Submission-2026-11-15.md) optimized.
+One scratch path and direct unclipped polygon submission improve complete fresh
+misses 8–9% / warm 6–10%, with 1.46 MiB less allocation. Replay ~16% faster.
+Full-path caching discarded after regressions. 196 Release tests/21 Debug path
+tests/build/pack/exact CPU pixels pass. Next profile current requests. See
+[handoff](../Handoffs/2026-11-15-path-submission.md).
+
+2026-11-15 [post-preparation complete profile](Post-Preparation-Profile-2026-11-15.md)
+complete. Observer-free drawing samples lead, ~42% fresh / 53% warm. Instrumented
+preparation and fresh decode remain close. Two zero-loss traces, 1,260 exact-pixel
+timings. Next isolate line/polygon submission and repeated path construction. See
+[handoff](../Handoffs/2026-11-15-post-preparation-profile.md).
+
+2026-11-15 [filter dispatch and layer preparation](Filter-Preparation-2026-11-15.md)
+optimized. Alternating comparisons show fresh complete misses 8–12% faster, warm
+6–8%, approximately 2.52 MiB less allocation. Isolated preparation 41–43% faster.
+190 tests/restore-enabled build/pack and exact CPU pixels pass. Next profile current
+requests. See [handoff](../Handoffs/2026-11-15-filter-preparation.md).
+
+2026-11-15 [post-style complete profile](Post-Style-Profile-2026-11-15.md) complete.
+Preparation/style still leads combined timers, ~34% fresh / 48% warm. Fresh decode
+~31%, drawing ~26% fresh / 40% warm. Two zero-loss traces and 1,260 exact-pixel
+timings. Next isolate repeated filter interpretation and feature/layer preparation.
+See [handoff](../Handoffs/2026-11-15-post-style-profile.md).
+
+2026-11-15 [value/filter evaluation](Style-Evaluation-2026-11-15.md) optimized.
+Warm heavy-request allocation falls 706 KiB (5.3%), fresh 2.2%. Complete latency
+shows mixed results and higher p95 tails. 186 tests/restore-enabled build/pack pass.
+Next profile current requests before selecting further preparation work. See
+[handoff](../Handoffs/2026-11-15-style-evaluation.md).
+
+2026-11-15 [post-drawing complete profile](Post-Path-Profile-2026-11-15.md) complete.
+Preparation/style now leads combined timers, ~32% fresh / 47% warm. Fresh decode
+and drawing remain close. Two zero-loss captures and 1,260 pixel-validated timings.
+Next isolate filter/value evaluation and preparation; see
+[handoff](../Handoffs/2026-11-15-post-path-profile.md).
+
+2026-11-15 [path batching and paint reuse](Path-Drawing-2026-11-15.md) validated.
+Geometry medians 13–20% lower, fresh complete medians 8–11% lower in focused pairs.
+Deterministic polygon cleanup added. 173 Release tests/15 Debug path tests/full
+build/pack and exact CPU pixels pass. Late-run host variation is recorded. See
+[handoff](../Handoffs/2026-11-15-path-drawing.md).
+
+2026-11-15 [post-PNG request profile](Post-Png-Profile-2026-11-15.md) complete.
+Drawing now leads combined stages, ~34% fresh / 47% warm in the focused repeat.
+Preparation/style is close; PNG ~8–11%. Two zero-loss traces and 1,260 validated
+timings. Next investigate geometry/path construction and native drawing costs.
+See [handoff](../Handoffs/2026-11-15-post-png-profile.md).
+
+2026-11-15 [lossless PNG encoding optimized](Png-Encoding-2026-11-15.md).
+Vector cache encoding 73–81% faster and files 14–20% smaller across eight map
+cases. Complete direct-PNG misses 23–24% faster warm / 15–16% fresh. Raster styles
+use compact defaults following gradient diagnostics. 158 tests/full build/pack
+and exact pixels pass. See [handoff](../Handoffs/2026-11-15-png-encoding.md).
+
+2026-11-15 [complete-request profile refreshed](Complete-Request-Profile-2026-11-15.md).
+1,260 validated timings and two zero-loss stack captures. PNG encoding, preparation/
+style and drawing remain substantial alongside fresh decode. Next define a PNG
+encoder experiment; see [handoff](../Handoffs/2026-11-15-complete-request-profile.md).
+
+2026-11-15 [direct raw-model conversion](Fused-Conversion-2026-11-15.md) validated
+and selected by normal loading. Decode/conversion medians 16–17% lower, complete
+fresh direct-PNG medians 10–11% lower, allocation reduced. Complete p95 slightly
+higher. 148 tests/full build/pack and exact outputs pass. See
+[handoff](../Handoffs/2026-11-15-fused-conversion.md).
+
+2026-11-15 [protobuf buffering experiments](Protobuf-Buffering-2026-11-15.md) complete.
+Direct reader retained in benchmarks after 3.5–8.1% parser gains failed to translate
+to complete-request gains. 143 tests/full build/pack and exact outputs pass. Next
+define fused model conversion; see [handoff](../Handoffs/2026-11-15-protobuf-buffering.md).
+
+2026-11-15 [attribute parser improvement](Attribute-Parsing-2026-11-15.md) validated.
+Alternating parser median 36% lower, managed allocation 35.6% lower. Complete fresh
+direct-PNG miss medians 8–13% lower in two focused runs. 126 tests/full build/pack,
+four model hashes and pixel checks pass. See [handoff](../Handoffs/2026-11-15-attribute-parsing.md).
+
+2026-11-15 [parser stack profiling](Parser-Cpu-2026-11-15.md) completed twice with
+zero lost events. Attributes and protobuf lead non-GC-poll parser samples. Next
+inspect dependency materialization before a bounded optimization and unprofiled
+comparison. See [handoff](../Handoffs/2026-11-15-parser-cpu.md).
+
+2026-11-15 decode follow-up: [parser/adapter allocations isolated and adapter cleaned up](Decode-Conversion-2026-11-15.md).
+Fresh decode 30.58 → 28.27 MiB, no material latency gain claimed. 120 tests/full
+build/pack, exact model fingerprints and pixel checks pass. See
+[latest handoff](../Handoffs/2026-11-15-decode-conversion.md).
+
 2026-11-15 checkpoint: [PNG/allocation work reviewed and validated](../Handoffs/2026-11-15-performance-checkpoint.md),
 118 tests/full restore-enabled build/pack pass. Next isolate native decode/conversion
 allocations before another optimization. Performance findings retain their measured

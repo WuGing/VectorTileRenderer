@@ -1,5 +1,6 @@
 ﻿using Clipper2Lib;
 using SkiaSharp;
+using System.Buffers;
 using System.Linq;
 
 namespace WuGing.VectorTileRenderer;
@@ -23,9 +24,22 @@ public class SkiaCanvas : ICanvas, IDisposable
     private readonly List<Rect> textRectangles = [];
 
     private bool disposed;
+    private SKPaint linePaint;
+    private SKPaint polygonPaint;
+    private (SKStrokeCap Cap, float Width, SKColor Color) linePaintState;
+    private (SKStrokeCap Cap, SKColor Color) polygonPaintState;
+    private float[] lineDash = Array.Empty<float>();
+    private SKPath drawingPath;
 
     private void ReleaseDrawing()
     {
+        drawingPath?.Dispose();
+        drawingPath = null;
+        linePaint?.Dispose();
+        linePaint = null;
+        polygonPaint?.Dispose();
+        polygonPaint = null;
+        lineDash = Array.Empty<float>();
         surface?.Dispose();
         surface = null;
         canvas = null;
@@ -188,20 +202,45 @@ public class SkiaCanvas : ICanvas, IDisposable
 
     private static SKPath GetPathFromGeometry(List<Point> geometry)
     {
-        SKPath path = new()
+        var path = new SKPath();
+        try
         {
-            FillType = SKPathFillType.EvenOdd,
-        };
-
-        var firstPoint = geometry[0];
-
-        path.MoveTo((float)firstPoint.X, (float)firstPoint.Y);
-        foreach (var point in geometry.Skip(1))
-        {
-            path.LineTo((float)point.X, (float)point.Y);
+            SetPathGeometry(path, geometry);
+            return path;
         }
+        catch
+        {
+            path.Dispose();
+            throw;
+        }
+    }
 
-        return path;
+    private static void SetPathGeometry(SKPath path, List<Point> geometry)
+    {
+        var count = geometry.Count;
+        var firstPoint = geometry[0];
+        var rented = count > 128 ? ArrayPool<SKPoint>.Shared.Rent(count) : null;
+        Span<SKPoint> points = rented == null ? stackalloc SKPoint[count] : rented.AsSpan(0, count);
+        try
+        {
+            path.Rewind();
+            path.FillType = SKPathFillType.EvenOdd;
+            points[0] = new SKPoint((float)firstPoint.X, (float)firstPoint.Y);
+            for (var i = 1; i < count; i++)
+                points[i] = new SKPoint((float)geometry[i].X, (float)geometry[i].Y);
+            path.AddPoly(points, false);
+        }
+        finally
+        {
+            if (rented != null) ArrayPool<SKPoint>.Shared.Return(rented);
+        }
+    }
+
+    private SKPath GetDrawingPath(List<Point> geometry)
+    {
+        if (drawingPath == null) drawingPath = GetPathFromGeometry(geometry);
+        else SetPathGeometry(drawingPath, geometry);
+        return drawingPath;
     }
 
     public void DrawLineString(List<Point> geometry, Brush style)
@@ -215,28 +254,62 @@ public class SkiaCanvas : ICanvas, IDisposable
             }
         }
 
-        using var path = GetPathFromGeometry(geometry);
+        var path = GetDrawingPath(geometry);
         if (path == null)
         {
             return;
         }
 
-        using SKPaint fillPaint = new()
-        {
-            Style = SKPaintStyle.Stroke,
-            StrokeCap = ConvertCap(style.Paint.LineCap),
-            StrokeWidth = (float)style.Paint.LineWidth,
-            Color = new SKColor(style.Paint.LineColor.R, style.Paint.LineColor.G, style.Paint.LineColor.B, (byte)Clamp(style.Paint.LineColor.A * style.Paint.LineOpacity, 0, 255)),
-            IsAntialias = true,
-        };
+        canvas.DrawPath(path, GetLinePaint(style));
+    }
 
-        if (style.Paint.LineDashArray.Length > 0)
+    private SKPaint GetLinePaint(Brush style)
+    {
+        var state = (Cap: ConvertCap(style.Paint.LineCap), Width: (float)style.Paint.LineWidth,
+            Color: new SKColor(style.Paint.LineColor.R, style.Paint.LineColor.G, style.Paint.LineColor.B,
+                (byte)Clamp(style.Paint.LineColor.A * style.Paint.LineOpacity, 0, 255)));
+        if (linePaint == null || !linePaintState.Equals(state))
         {
-            using var effect = SKPathEffect.CreateDash([.. style.Paint.LineDashArray.Select(n => (float)n)], 0);
-            fillPaint.PathEffect = effect;
+            linePaint ??= new SKPaint { Style = SKPaintStyle.Stroke, IsAntialias = true };
+            linePaint.StrokeCap = state.Cap;
+            // Skia ignores negative/NaN widths. A fresh legacy paint therefore
+            // kept its default hairline width for those inputs.
+            linePaint.StrokeWidth = state.Width >= 0 ? state.Width : 0;
+            linePaint.Color = state.Color;
+            linePaintState = state;
         }
+        if (!DashMatches(style.Paint.LineDashArray))
+        {
+            var intervals = new float[style.Paint.LineDashArray.Length];
+            for (var i = 0; i < intervals.Length; i++) intervals[i] = (float)style.Paint.LineDashArray[i];
+            using var effect = intervals.Length > 0 ? SKPathEffect.CreateDash(intervals, 0) : null;
+            linePaint.PathEffect = effect;
+            lineDash = intervals;
+        }
+        return linePaint;
+    }
 
-        canvas.DrawPath(path, fillPaint);
+    private bool DashMatches(double[] intervals)
+    {
+        if (intervals.Length != lineDash.Length) return false;
+        for (var i = 0; i < intervals.Length; i++)
+            if ((float)intervals[i] != lineDash[i]) return false;
+        return true;
+    }
+
+    private SKPaint GetPolygonPaint(Brush style)
+    {
+        var state = (Cap: ConvertCap(style.Paint.LineCap),
+            Color: new SKColor(style.Paint.FillColor.R, style.Paint.FillColor.G, style.Paint.FillColor.B,
+                (byte)Clamp(style.Paint.FillColor.A * style.Paint.FillOpacity, 0, 255)));
+        if (polygonPaint == null || !polygonPaintState.Equals(state))
+        {
+            polygonPaint ??= new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
+            polygonPaint.StrokeCap = state.Cap;
+            polygonPaint.Color = state.Color;
+            polygonPaintState = state;
+        }
+        return polygonPaint;
     }
 
     private static SKTextAlign ConvertAlignment(TextAlignment alignment) => alignment switch
@@ -782,15 +855,13 @@ public class SkiaCanvas : ICanvas, IDisposable
 
     public void DrawPolygon(List<Point> geometry, Brush style)
     {
-        List<List<Point>> allGeometries;
-        if (ClipOverflow)
+        if (!ClipOverflow)
         {
-            allGeometries = ClipPolygon(geometry);
+            canvas.DrawPath(GetDrawingPath(geometry), GetPolygonPaint(style));
+            return;
         }
-        else
-        {
-            allGeometries = new List<List<Point>>() { geometry };
-        }
+
+        var allGeometries = ClipPolygon(geometry);
 
         if (allGeometries == null)
         {
@@ -799,21 +870,13 @@ public class SkiaCanvas : ICanvas, IDisposable
 
         foreach (var geometryPart in allGeometries)
         {
-            var path = GetPathFromGeometry(geometryPart);
+            var path = GetDrawingPath(geometryPart);
             if (path == null)
             {
                 return;
             }
 
-            using SKPaint fillPaint = new()
-            {
-                Style = SKPaintStyle.Fill,
-                StrokeCap = ConvertCap(style.Paint.LineCap),
-                Color = new SKColor(style.Paint.FillColor.R, style.Paint.FillColor.G, style.Paint.FillColor.B, (byte)Clamp(style.Paint.FillColor.A * style.Paint.FillOpacity, 0, 255)),
-                IsAntialias = true,
-            };
-
-            canvas.DrawPath(path, fillPaint);
+            canvas.DrawPath(path, GetPolygonPaint(style));
         }
     }
 
